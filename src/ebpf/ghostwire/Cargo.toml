@@ -1,0 +1,30 @@
+[package]
+name = "ghostwire"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aya = "0.12"
+aya-log = "0.2"
+clap = { version = "4.1", features = ["derive"] }
+ghostwire-common = { path = "../ghostwire-common", features = ["user"] }
+anyhow = "1"
+env_logger = "0.10"
+libc = "0.2"
+log = "0.4"
+tokio = { version = "1.25", features = ["macros", "rt", "rt-multi-thread", "net", "signal", "sync"] }
+tracing = "0.1.40"
+serde_json = "1.0.128"
+ghostwire_types = {path = "../../types"}
+serde = {version = "1.0.210", features = ["derive"]}
+prometheus = "0.13.4"
+tokio_schedule = "0.3.2"
+http-body-util = { version = "0.1" }
+hyper = { version = "1", features = ["http1"] }
+hyper-util = { version = "0.1.5", features = ["full"] }
+bytes = "1.6.0"
+
+[[bin]]
+name = "ghostwire"
+path = "src/main.rs"
