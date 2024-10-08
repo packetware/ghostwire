@@ -1,5 +1,6 @@
 [package]
 name = "ghostwire_types"
+version = "0.2.1"
 
 [dependencies]
 serde = {version = "1.0.210", features = ["derive"]}

@@ -1,7 +1,6 @@
 use ghostwire_types::{ClientMessage, ServerMessage};
-use std::os::unix::net::UnixStream;
 use std::io::{Read, Write};
-
+use std::os::unix::net::UnixStream;
 
 /// Send a message to the firewall, erroring if unsuccessful
 pub fn send_message(client_message: ClientMessage) -> anyhow::Result<()> {
@@ -20,7 +19,7 @@ pub fn send_message(client_message: ClientMessage) -> anyhow::Result<()> {
     // read the response
     let bytes_read = stream.read(&mut buffer)?;
 
-    // convert the response to a string 
+    // convert the response to a string
     let response = std::str::from_utf8(&buffer[..bytes_read])?;
 
     // deserialize the response
@@ -30,6 +29,11 @@ pub fn send_message(client_message: ClientMessage) -> anyhow::Result<()> {
     if server_message.request_success {
         Ok(())
     } else {
-        anyhow::bail!("The server responded with an error: {}", server_message.message.unwrap_or("No message provided".to_string()))
+        anyhow::bail!(
+            "The server responded with an error: {}",
+            server_message
+                .message
+                .unwrap_or("No message provided".to_string())
+        )
     }
 }

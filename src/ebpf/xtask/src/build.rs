@@ -3,7 +3,11 @@ use std::process::Command;
 use anyhow::Context as _;
 use clap::Parser;
 
-use crate::build_ebpf::{build_ebpf, Architecture, Options as BuildOptions};
+use crate::build_ebpf::{
+    build_ebpf,
+    Architecture,
+    Options as BuildOptions,
+};
 
 #[derive(Debug, Parser)]
 pub struct Options {

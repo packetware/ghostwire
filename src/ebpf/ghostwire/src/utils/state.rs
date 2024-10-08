@@ -10,8 +10,17 @@ use prometheus::{
     IntCounterVec,
     Registry,
 };
+use tokio::sync::oneshot;
 
-/// The state of the current app
+/// The overall state of the firewall, to be exposed to the CLI
+pub struct OverallState {
+    pub enabled: bool,
+    /// oneshot sent from the YAML parsing or from the CLI with the initial rules
+    pub oneshot_send: Option<oneshot::Sender<Vec<Rule>>>,
+    pub state: Option<Arc<State>>,
+}
+
+/// The state of the firewall when active
 pub struct State {
     /// The applied rules
     pub rule_map: HashMap<MapData, u32, Rule>,
@@ -21,6 +30,12 @@ pub struct State {
     pub xdp_analytic_map: HashMap<MapData, u32, u128>,
     /// The aggregate traffic control metrics
     pub tc_analytic_map: HashMap<MapData, i32, u128>,
+    /// The Prometheus counters to update from the maps
+    pub counters: Arc<PromCounters>,
+}
+
+/// The state of the Prometheus counters
+pub struct PromCounters {
     /// The prometheus registry
     pub registry: Registry,
     /// The number of times a rule was evaluated
@@ -37,20 +52,24 @@ impl State {
     /// Pull the maps and update the Prometheus metrics. Designed to be run as a task.
     pub async fn prometheus_metrics(&self) {
         for (key, value) in self.rule_analytic_map.iter().flatten() {
-            let evaluated_diff = value.evaluated - self.rule_evaluated.with_label_values(&[&key.to_string()]).get() as u128;
+            let evaluated_diff = value.evaluated
+                - self
+                    .rule_evaluated
+                    .with_label_values(&[&key.to_string()])
+                    .get() as u128;
 
             self.rule_evaluated
-                .with_label_values(&[
-                    &key.to_string(),
-                ])
+                .with_label_values(&[&key.to_string()])
                 .inc_by(evaluated_diff as u64);
 
-            let passed_diff = value.passed - self.rule_passed.with_label_values(&[&key.to_string()]).get() as u128;
+            let passed_diff = value.passed
+                - self
+                    .rule_passed
+                    .with_label_values(&[&key.to_string()])
+                    .get() as u128;
 
             self.rule_passed
-                .with_label_values(&[
-                    &key.to_string(),
-                ])
+                .with_label_values(&[&key.to_string()])
                 .inc_by(passed_diff as u64);
         }
 
@@ -61,9 +80,9 @@ impl State {
         }
 
         for (key, value) in self.tc_analytic_map.iter().flatten() {
-                self.tc_action
-                    .with_label_values(&[&key.to_string()])
-                    .inc_by(value as u64);
+            self.tc_action
+                .with_label_values(&[&key.to_string()])
+                .inc_by(value as u64);
         }
     }
 }

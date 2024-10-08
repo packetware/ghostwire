@@ -1,7 +1,7 @@
 // custom xtask command to run clippy
 
-use std::process::Command;
 use clap::Parser;
+use std::process::Command;
 
 use crate::build_ebpf::Architecture;
 
@@ -41,4 +41,3 @@ pub fn run_clippy(opts: Options) -> Result<(), anyhow::Error> {
     assert!(status.success());
     Ok(())
 }
-

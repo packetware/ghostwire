@@ -1,26 +1,26 @@
 extern crate serde;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Types for firewall rules, messages
 
-/// A message between server and client 
+/// A message between server and client
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ClientMessage {
-    pub req_type: ClientReqType
+    pub req_type: ClientReqType,
 }
 
 /// What the client is requesting from the server
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientReqType {
-    STATUS
+    STATUS,
 }
 
 /// A response from the server
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerMessage {
     pub request_success: bool,
-    pub message: Option<String>
+    pub message: Option<String>,
 }
 
 /// A firewall rule

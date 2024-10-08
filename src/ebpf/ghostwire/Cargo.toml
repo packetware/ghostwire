@@ -24,6 +24,8 @@ http-body-util = { version = "0.1" }
 hyper = { version = "1", features = ["http1"] }
 hyper-util = { version = "0.1.5", features = ["full"] }
 bytes = "1.6.0"
+yaml-rust = "0.4.5"
+tracing-subscriber = "0.3.18"
 
 [[bin]]
 name = "ghostwire"
