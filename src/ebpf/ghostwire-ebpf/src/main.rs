@@ -2,18 +2,36 @@
 #![no_main]
 
 use aya_ebpf::{
-    bindings::{xdp_action, TC_ACT_SHOT},
-    macros::{classifier, map, xdp},
-    maps::{HashMap, LruHashMap},
-    programs::{TcContext, XdpContext},
+    bindings::{
+        xdp_action,
+        TC_ACT_SHOT,
+    },
+    macros::{
+        classifier,
+        map,
+        xdp,
+    },
+    maps::{
+        HashMap,
+        LruHashMap,
+    },
+    programs::{
+        TcContext,
+        XdpContext,
+    },
 };
-use ghostwire_common::{Rule, RuleAnalytics};
+use ghostwire_common::{
+    Rule,
+    RuleAnalytics,
+};
 
 mod handlers;
 mod utils;
 
-use crate::handlers::ingress::ghostwire_ingress_fallible;
-use crate::handlers::egress::ghostwire_egress_fallible;
+use crate::handlers::{
+    egress::ghostwire_egress_fallible,
+    ingress::ghostwire_ingress_fallible,
+};
 
 #[map]
 /// The map which holds the firewall rules. Key is the index.
@@ -38,13 +56,13 @@ pub static HOLEPUNCHED: LruHashMap<u128, u64> = LruHashMap::<u128, u64>::with_ma
 #[map]
 /// Whenever an action is completed IN XDP, like DROP, PASS, or ABORT, report that in this map. Designed
 /// to be an overall statistic
-pub static XDP_ACTION_ANALYTICS: HashMap<u32, u128> = HashMap::<u32, u128>::with_max_entries(100, 0);
+pub static XDP_ACTION_ANALYTICS: HashMap<u32, u128> =
+    HashMap::<u32, u128>::with_max_entries(100, 0);
 
 #[map]
 /// Whenever an action is completed, like TC_ACT_SHOT or TC_ACT_PIPE report that in this map. Designed
 /// to be an overall statistic
 pub static TC_ACTION_ANALYTICS: HashMap<i32, u128> = HashMap::<i32, u128>::with_max_entries(100, 0);
-
 
 #[xdp]
 pub fn ghostwire_xdp(ctx: XdpContext) -> u32 {
@@ -54,7 +72,7 @@ pub fn ghostwire_xdp(ctx: XdpContext) -> u32 {
             Err(_) => xdp_action::XDP_ABORTED,
         };
 
-        // increment the analytics 
+        // increment the analytics
         match XDP_ACTION_ANALYTICS.get_ptr_mut(&result) {
             Some(val) => *val += 1,
             None => {
@@ -66,7 +84,6 @@ pub fn ghostwire_xdp(ctx: XdpContext) -> u32 {
     }
 }
 
-
 #[classifier]
 pub fn ghostwire_tc(tc: TcContext) -> i32 {
     unsafe {
@@ -75,7 +92,7 @@ pub fn ghostwire_tc(tc: TcContext) -> i32 {
             Err(_) => TC_ACT_SHOT,
         };
 
-        // increment the analytics 
+        // increment the analytics
         match TC_ACTION_ANALYTICS.get_ptr_mut(&result) {
             Some(val) => *val += 1,
             None => {

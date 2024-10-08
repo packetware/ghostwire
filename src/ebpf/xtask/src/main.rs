@@ -1,7 +1,7 @@
 mod build;
 mod build_ebpf;
-mod run;
 mod clippy;
+mod run;
 
 use std::process::exit;
 

@@ -76,7 +76,6 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
         _ => return Ok(XDP_PASS),
     };
 
-
     // the index of where we are in the map
     // we're using maps and not an array because arrays are immutable, meanwhile we can update maps
     // on the fly
@@ -86,7 +85,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
             if rule.source_start_ip == 0
                 || (src_ip >= rule.source_start_ip && src_ip <= rule.source_end_ip)
             {
-                 // determine if we need to do a protocol comparison
+                // determine if we need to do a protocol comparison
                 if rule.protocol_number != 0 {
                     if rule.protocol_number != protocol as u8 {
                         continue;
