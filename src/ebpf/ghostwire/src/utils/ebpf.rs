@@ -4,7 +4,7 @@ use super::state::{
 };
 
 /// Load the eBPF program, fetching the maps and creating state from partial arguments
-pub fn load_ebpf(counters: PromCounters, initial_rules: Vec<Rule>) -> anyhow::Result<State> {
+pub fn load_ebpf(counters: Arc<PromCounters>, initial_rules: Vec<Rule>) -> anyhow::Result<State> {
     // Bump the memlock rlimit. This is needed for older kernels that don't use the
     // new memcg based accounting, see https://lwn.net/Articles/837122/
     let rlim = libc::rlimit {

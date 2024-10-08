@@ -27,6 +27,7 @@ use hyper::{
     Request,
 };
 use hyper_util::rt::TokioIo;
+use lazy_static::lazy_static;
 use log::{
     debug,
     info,
@@ -51,12 +52,21 @@ use tokio_schedule::{
     Job,
 };
 use utils::{
+    ebpf::load_ebpf,
     prometheus::{
         create_prometheus_counters,
         handle_prom_listener,
     },
-    state::PromCounters,
+    state::{
+        OverallState,
+        PromCounters,
+    },
 };
+
+lazy_static! {
+    /// State shared with the socket listener
+    static ref OVERALL_STATE: RwLock<OverallState> = RwLock::new(OverallState { enabled: false, oneshot_send: None, state: None })
+}
 
 mod utils;
 
@@ -70,6 +80,12 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // wait for startup signal from reading config file or from the cli
     let (tx, rx) = oneshot::channel::<Vec<Rule>>();
+
+    {
+        let overall_state = OVERALL_STATE.write().await;
+
+        overall_state.oneshot_send = Some(tx)
+    }
 
     // start the task to listen for incoming connections over the UNIX socket.
 
@@ -91,7 +107,17 @@ async fn main() -> Result<(), anyhow::Error> {
         )
     }
 
-    // wait until we get the new response
+    // load the eBPF into the kernel
+    let state = Arc::new(load_ebpf(counters, initial_rules)?);
+
+    // update the CLI with the new state
+    {
+        let state = Arc::clone(&state);
+        let overall_state = OVERALL_STATE.write().await;
+
+        overall_state.enabled = true;
+        overall_state.state = Some(state);
+    }
 
     {
         let state = state.clone();
@@ -109,8 +135,6 @@ async fn main() -> Result<(), anyhow::Error> {
         let state = state.clone();
         task::spawn(handle_prom_listener(state));
     }
-
-    state.listen().await;
 
     Ok(())
 }
