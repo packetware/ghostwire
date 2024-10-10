@@ -27,6 +27,8 @@ async fn main() -> Result<(), anyhow::Error> {
         .pretty()
         .finish();
 
+    env_logger::init();
+
     // TODO: read the previous state on startup (@see utils/bootloader.rs)
 
     // Start the UNIX socket server.

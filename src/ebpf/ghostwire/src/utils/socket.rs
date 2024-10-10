@@ -147,7 +147,7 @@ async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
 
             Ok(ServerMessage {
                 request_success: true,
-                message: None,
+                message: Some("Rules updated".to_string()),
             })
         }
         None => {
