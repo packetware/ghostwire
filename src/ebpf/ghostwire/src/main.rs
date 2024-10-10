@@ -1,50 +1,14 @@
-use crate::utils::{
-    prom_http::handle_prom_listener,
-    state::State,
-};
+use crate::utils::prometheus::handle_prom_listener;
 use anyhow::Context;
-use aya::{
-    include_bytes_aligned,
-    maps::HashMap,
-    programs::{
-        tc,
-        SchedClassifier,
-        TcAttachType,
-        Xdp,
-        XdpFlags,
-    },
-    Bpf,
-};
-use aya_log::BpfLogger;
-use clap::Parser;
-use ghostwire_common::{
-    Rule,
-    RuleAnalytics,
-};
-use hyper::{
-    server::conn::http1,
-    service::service_fn,
-    Request,
-};
-use hyper_util::rt::TokioIo;
+use ghostwire_common::Rule;
 use lazy_static::lazy_static;
-use log::{
-    debug,
-    info,
-    warn,
-};
-use prometheus::{
-    IntCounterVec,
-    Registry,
-};
-use std::{
-    net::SocketAddr,
-    sync::Arc,
-};
+use std::sync::Arc;
 use tokio::{
-    net::TcpListener,
     signal,
-    sync::RwLock,
+    sync::{
+        oneshot,
+        RwLock,
+    },
     task,
 };
 use tokio_schedule::{
@@ -53,19 +17,14 @@ use tokio_schedule::{
 };
 use utils::{
     ebpf::load_ebpf,
-    prometheus::{
-        create_prometheus_counters,
-        handle_prom_listener,
-    },
-    state::{
-        OverallState,
-        PromCounters,
-    },
+    prometheus::create_prometheus_counters,
+    socket::socket_server,
+    state::OverallState,
 };
 
 lazy_static! {
     /// State shared with the socket listener
-    static ref OVERALL_STATE: RwLock<OverallState> = RwLock::new(OverallState { enabled: false, oneshot_send: None, state: None })
+    static ref OVERALL_STATE: RwLock<OverallState> = RwLock::new(OverallState { enabled: false, state: None, analytic_handle: None, counters: create_prometheus_counters().expect("infallible prometheus counter generation failed") });
 }
 
 mod utils;
@@ -78,63 +37,20 @@ async fn main() -> Result<(), anyhow::Error> {
         .pretty()
         .finish();
 
-    // wait for startup signal from reading config file or from the cli
-    let (tx, rx) = oneshot::channel::<Vec<Rule>>();
+    // TODO: read the previous state on startup (@see utils/bootloader.rs)
 
-    {
-        let overall_state = OVERALL_STATE.write().await;
+    // Start the UNIX socket server.
+    task::spawn(socket_server());
 
-        overall_state.oneshot_send = Some(tx)
-    }
+    // Start the Prometheus HTTP listener.
+    task::spawn(handle_prom_listener());
 
-    // start the task to listen for incoming connections over the UNIX socket.
+    // Allow the user to unload the eBPF program with Ctrl-C.
+    tracing::info!("Waiting for Ctrl-C...");
 
-    // start the prometheus listener
-    let counters = create_prometheus_counters().context("failed to create prometheus counters")?;
+    signal::ctrl_c().await?;
 
-    {
-        let counters = Arc::clone(&counters);
-        task::spawn(handle_prom_listener(counters))
-    }
-
-    // block until we get the initial rules or a startup message
-    let inital_rules = rx.await?;
-
-    // ok, we're ready to start
-    if inital_rules.is_empty() {
-        tracing::warn!(
-            "Starting firewall with no rules - all inbound new connections will be dropped!"
-        )
-    }
-
-    // load the eBPF into the kernel
-    let state = Arc::new(load_ebpf(counters, initial_rules)?);
-
-    // update the CLI with the new state
-    {
-        let state = Arc::clone(&state);
-        let overall_state = OVERALL_STATE.write().await;
-
-        overall_state.enabled = true;
-        overall_state.state = Some(state);
-    }
-
-    {
-        let state = state.clone();
-
-        task::spawn(every(10).seconds().perform(move || {
-            let state = state.clone();
-
-            async move {
-                state.prometheus_metrics().await;
-            }
-        }));
-    }
-
-    {
-        let state = state.clone();
-        task::spawn(handle_prom_listener(state));
-    }
+    tracing::info!("Exiting...");
 
     Ok(())
 }

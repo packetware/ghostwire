@@ -1,6 +1,15 @@
-use crate::utils::state::State;
+use super::ebpf::{
+    load_ebpf,
+    unload_ebpf,
+};
+use crate::{
+    utils::state::State,
+    OVERALL_STATE,
+};
+use ghostwire_common::Rule;
 use ghostwire_types::{
     ClientMessage,
+    ClientReqType,
     ServerMessage,
 };
 use std::{
@@ -14,68 +23,169 @@ use std::{
     },
 };
 
-impl State {
-    /// Listen on the socket for client requests from the CLI
-    pub async fn listen(&self) -> anyhow::Result<()> {
-        // delete a socket that could exist currently
-        let _ = std::fs::remove_file("/tmp/ghostwire.sock");
+/// Listen on the socket for client requests from the CLI
+pub async fn socket_server() -> anyhow::Result<()> {
+    // delete a socket that could exist currently
+    let _ = std::fs::remove_file("/tmp/ghostwire.sock");
 
-        let listener = UnixListener::bind("/tmp/ghostwire.sock").expect("Failed to bind socket");
+    let listener = UnixListener::bind("/tmp/ghostwire.sock").expect("Failed to bind socket");
 
-        self.handle_listener(listener)
-            .expect("Failed to handle listener");
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                if let Err(e) = handle_stream(stream).await {
+                    tracing::error!("Failed to handle stream: {:?}", e);
+                };
+            }
+            Err(err) => {
+                tracing::error!("Failed to accept connection: {:?}", err);
+            }
+        }
     }
 
-    /// Run the listener and handle new messages
-    fn handle_listener(&self, listener: UnixListener) -> anyhow::Result<()> {
-        for stream in listener.incoming() {
-            match stream {
-                Ok(mut stream) => {
-                    let mut buffer = [0; 1024];
-                    match stream.read(&mut buffer) {
-                        Ok(size) => {
-                            let received_data = &buffer[..size];
-                            match serde_json::from_slice::<ClientMessage>(received_data) {
-                                Ok(message) => {
-                                    self.handle_server_request(message, stream)?;
-                                }
-                                Err(err) => {
-                                    anyhow::bail!("Failed to parse JSON: {}", err);
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            anyhow::bail!("Failed to read from socket: {}", err);
-                        }
-                    }
+    Ok(())
+}
+
+/// Run the listener and handle new messages
+async fn handle_stream(mut stream: UnixStream) -> anyhow::Result<()> {
+    let mut buffer = [0; 1024];
+
+    match stream.read(&mut buffer) {
+        Ok(size) => {
+            let received_data = &buffer[..size];
+            match serde_json::from_slice::<ClientMessage>(received_data) {
+                Ok(message) => {
+                    handle_server_request(message, stream).await?;
                 }
                 Err(err) => {
-                    anyhow::bail!("failed to accept connection: {}", err);
+                    anyhow::bail!("Failed to parse JSON: {}", err);
                 }
             }
         }
-
-        Ok(())
+        Err(err) => {
+            anyhow::bail!("Failed to read from socket: {}", err);
+        }
     }
 
-    /// Once parsed to a ClientMessage, handle the request
-    fn handle_server_request(
-        &self,
-        message: ClientMessage,
-        mut stream: UnixStream,
-    ) -> anyhow::Result<()> {
-        println!("Received: {:?}", message);
+    Ok(())
+}
 
-        // print the output
-        let successful_response = ServerMessage {
-            request_success: true,
-            message: None,
-        };
+async fn handle_server_request(
+    message: ClientMessage,
+    mut stream: UnixStream,
+) -> anyhow::Result<()> {
+    let resp = match handle_server_request_fallible(message).await {
+        Ok(t) => t,
+        Err(e) => ServerMessage {
+            request_success: false,
+            message: Some(format!("{}", e)),
+        },
+    };
 
-        // serialize and send over the stream
-        let response_data = serde_json::to_vec(&successful_response)?;
-        stream.write_all(&response_data)?;
+    let response_data = serde_json::to_vec(&resp)?;
+    stream.write_all(&response_data)?;
 
-        Ok(())
+    Ok(())
+}
+
+/// Once parsed to a ClientMessage, handle the request
+async fn handle_server_request_fallible(message: ClientMessage) -> anyhow::Result<ServerMessage> {
+    println!("Received: {:?}", message);
+
+    match message.req_type {
+        ClientReqType::STATUS => handle_status_request().await,
+        ClientReqType::RULES => handle_rules_put().await,
+        ClientReqType::ENABLE => {
+            handle_enable(message.interface.ok_or(anyhow::anyhow!(
+                "enable message didn't include the interface"
+            ))?)
+            .await
+        }
+        ClientReqType::DISABLE => handle_disable().await,
     }
+}
+
+/// Handle a status request from the client
+async fn handle_status_request() -> anyhow::Result<ServerMessage> {
+    let overall_status = OVERALL_STATE.read().await;
+
+    Ok(ServerMessage {
+        request_success: true,
+        message: Some(format!("{}", overall_status)),
+    })
+}
+
+/// Handle the modification of rules. The client will send the full list of rules, to which we will
+/// replace the map.
+async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
+    let mut overall_status = OVERALL_STATE.write().await;
+
+    if !overall_status.enabled {
+        anyhow::bail!("Firewall is disabled");
+    }
+
+    match &overall_status.state {
+        Some(state) => {
+            // eBPF maps are super limited in what they can do in comparison to a HashMap from the standard
+            // library, so instead of being able to clear the map,
+            // we'll have to sauce it up
+            let mut map = state.rule_map.write().await;
+
+            let map_len = map.iter().collect::<Vec<_>>().len();
+
+            // we use index as key
+            for i in 0..map_len {
+                map.remove(&(i as u32))?;
+            }
+
+            // insert the new rules
+            for (i, rule) in rules.iter().enumerate() {
+                map.insert(i as u32, *rule, 0)?;
+            }
+
+            Ok(ServerMessage {
+                request_success: true,
+                message: None,
+            })
+        }
+        None => {
+            anyhow::bail!("Firewall is not enabled");
+        }
+    }
+}
+
+/// Handle the enabling of the firewall.
+async fn handle_enable(interface: String) -> anyhow::Result<ServerMessage> {
+    let mut overall_status = OVERALL_STATE.write().await;
+
+    if overall_status.enabled || overall_status.state.is_some() {
+        anyhow::bail!("Firewall is already enabled");
+    }
+
+    overall_status.enabled = true;
+
+    load_ebpf(vec![], interface).await?;
+
+    Ok(ServerMessage {
+        request_success: true,
+        message: None,
+    })
+}
+
+/// Handle the disabling of the firewall.
+async fn handle_disable() -> anyhow::Result<ServerMessage> {
+    let mut overall_status = OVERALL_STATE.write().await;
+
+    if !overall_status.enabled || overall_status.state.is_none() {
+        anyhow::bail!("Firewall is already disabled");
+    }
+
+    overall_status.enabled = false;
+
+    unload_ebpf().await;
+
+    Ok(ServerMessage {
+        request_success: true,
+        message: None,
+    })
 }

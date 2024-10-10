@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 
+use crate::OVERALL_STATE;
 use anyhow::Context;
 use bytes::Bytes;
 use http_body_util::Full;
@@ -13,6 +14,7 @@ use hyper::{
 use hyper_util::rt::TokioIo;
 use prometheus::{
     Encoder,
+    IntCounterVec,
     Registry,
     TextEncoder,
 };
@@ -22,12 +24,10 @@ use std::{
 };
 use tokio::net::TcpListener;
 
-use crate::utils::state::State;
-
 use super::state::PromCounters;
 
-/// Create the Prometheus counters to be used in the state
-pub async fn create_prometheus_counters() -> anyhow::Result<PromCounters> {
+/// Create the Prometheus counters and Registry.
+pub fn create_prometheus_counters() -> anyhow::Result<PromCounters> {
     let registry = Registry::new();
 
     let rule_evaluated = IntCounterVec::new(
@@ -72,8 +72,8 @@ pub async fn create_prometheus_counters() -> anyhow::Result<PromCounters> {
     })
 }
 
-pub async fn handle_prom_listener(state: Arc<PromCounters>) -> anyhow::Result<()> {
-    /// TODO: implement different ports
+pub async fn handle_prom_listener() -> anyhow::Result<()> {
+    // TODO: implement different ports
     let socket_addr: SocketAddr = format!("127.0.0.1:4242").as_str().parse()?;
 
     let listener = TcpListener::bind(socket_addr)
@@ -85,14 +85,13 @@ pub async fn handle_prom_listener(state: Arc<PromCounters>) -> anyhow::Result<()
         let (stream, _ip) = listener.accept().await?;
 
         let io = TokioIo::new(stream);
-        let state = Arc::clone(&state);
 
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
                 .keep_alive(false)
                 .serve_connection(
                     io,
-                    service_fn(|req: Request<hyper::body::Incoming>| state.prom_http(req)),
+                    service_fn(|req: Request<hyper::body::Incoming>| prom_http(req)),
                 )
                 .await
             {
@@ -102,29 +101,30 @@ pub async fn handle_prom_listener(state: Arc<PromCounters>) -> anyhow::Result<()
     }
 }
 
-impl PromCounters {
-    /// Expose Prometheus metrics
-    pub async fn prom_http(
-        &self,
-        _: Request<hyper::body::Incoming>,
-    ) -> Result<Response<Full<Bytes>>, Infallible> {
-        let encoder = TextEncoder::new();
-        let metric_families = self.registry.gather();
-        let mut buffer = vec![];
+/// Expose Prometheus metrics
+pub async fn prom_http(
+    _: Request<hyper::body::Incoming>,
+) -> Result<Response<Full<Bytes>>, Infallible> {
+    let overall_state = OVERALL_STATE.read().await;
+    let metric_families = overall_state.counters.registry.gather();
+    // Drop the reference to the state, as we don't need it for the preceeding IO
+    drop(overall_state);
 
-        match encoder.encode(&metric_families, &mut buffer) {
-            Ok(()) => Ok(Response::new(Full::new(Bytes::from(buffer)))),
-            Err(err) => {
-                tracing::warn!("Failed to encode prometheus metrics: {err:?}");
+    let encoder = TextEncoder::new();
+    let mut buffer = vec![];
 
-                let mut err_resp = Response::new(Full::new(Bytes::from(
-                    "Failed to encode prometheus metrics",
-                )));
+    match encoder.encode(&metric_families, &mut buffer) {
+        Ok(()) => Ok(Response::new(Full::new(Bytes::from(buffer)))),
+        Err(err) => {
+            tracing::warn!("Failed to encode prometheus metrics: {err:?}");
 
-                *err_resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+            let mut err_resp = Response::new(Full::new(Bytes::from(
+                "Failed to encode prometheus metrics",
+            )));
 
-                Ok(err_resp)
-            }
+            *err_resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+
+            Ok(err_resp)
         }
     }
 }
