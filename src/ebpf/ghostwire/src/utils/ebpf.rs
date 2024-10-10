@@ -1,7 +1,4 @@
-use super::state::{
-    PromCounters,
-    State,
-};
+use super::state::State;
 use crate::OVERALL_STATE;
 use anyhow::Context;
 use aya::{
@@ -91,20 +88,17 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
 
     let state = Arc::new(State {
         interface,
+        ebpf: RwLock::new(bpf),
         rule_map: RwLock::new(rule_map),
         rule_analytic_map,
         xdp_analytic_map,
         tc_analytic_map,
     });
 
-    // Start the task to grep metrics from the eBPF maps.
-    let handle = prom_metrics(Arc::clone(&state)).await;
-
     // Load the state.
     let mut write = OVERALL_STATE.write().await;
 
     write.state = Some(state);
-    write.analytic_handle = Some(handle);
 
     Ok(())
 }
@@ -118,22 +112,6 @@ pub async fn unload_ebpf() {
     // a critical assumption is that the state is not being used anywhere else in the program (this
     // assumption is currently correct, these are the only two references persistently reading
     // state)
-    if let Some(handle) = write.analytic_handle.take() {
-        handle.abort();
-    }
-
     write.state = None;
 }
 
-/// Create a Tokio task to grep metrics from the eBPF maps. Returns a handle to abort the task.
-async fn prom_metrics(state: Arc<State>) -> AbortHandle {
-    let task = task::spawn(every(10).seconds().perform(move || {
-        let state = Arc::clone(&state);
-
-        async move {
-            state.prometheus_metrics().await;
-        }
-    }));
-
-    task.abort_handle()
-}

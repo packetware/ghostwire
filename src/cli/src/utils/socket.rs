@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 
 /// Send a message to the firewall, erroring if unsuccessful
-pub fn send_message(client_message: ClientMessage) -> anyhow::Result<()> {
+pub fn send_message(client_message: ClientMessage) -> anyhow::Result<String> {
     // create the stream
     let mut stream = UnixStream::connect("/tmp/ghostwire.sock")?;
 
@@ -27,8 +27,9 @@ pub fn send_message(client_message: ClientMessage) -> anyhow::Result<()> {
 
     // if successful, return Ok
     if server_message.request_success {
-        Ok(())
-    } else {
+        Ok(server_message
+            .message.ok_or(anyhow::anyhow!("Server responded with success, no message provided"))?)
+                } else {
         anyhow::bail!(
             "The server responded with an error: {}",
             server_message

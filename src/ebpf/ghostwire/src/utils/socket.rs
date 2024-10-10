@@ -2,14 +2,11 @@ use super::ebpf::{
     load_ebpf,
     unload_ebpf,
 };
-use crate::{
-    utils::state::State,
-    OVERALL_STATE,
-};
-use ghostwire_common::Rule;
+use crate::OVERALL_STATE;
 use ghostwire_types::{
     ClientMessage,
     ClientReqType,
+    Rule,
     ServerMessage,
 };
 use std::{
@@ -94,7 +91,12 @@ async fn handle_server_request_fallible(message: ClientMessage) -> anyhow::Resul
 
     match message.req_type {
         ClientReqType::STATUS => handle_status_request().await,
-        ClientReqType::RULES => handle_rules_put().await,
+        ClientReqType::RULES => {
+            handle_rules_put(message.rules.ok_or(anyhow::anyhow!(
+                "request to change rules didn't include rules"
+            ))?)
+            .await
+        }
         ClientReqType::ENABLE => {
             handle_enable(message.interface.ok_or(anyhow::anyhow!(
                 "enable message didn't include the interface"
@@ -111,14 +113,14 @@ async fn handle_status_request() -> anyhow::Result<ServerMessage> {
 
     Ok(ServerMessage {
         request_success: true,
-        message: Some(format!("{}", overall_status)),
+        message: Some(overall_status.fmt().await),
     })
 }
 
 /// Handle the modification of rules. The client will send the full list of rules, to which we will
 /// replace the map.
 async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
-    let mut overall_status = OVERALL_STATE.write().await;
+    let overall_status = OVERALL_STATE.read().await;
 
     if !overall_status.enabled {
         anyhow::bail!("Firewall is disabled");
@@ -140,7 +142,7 @@ async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
 
             // insert the new rules
             for (i, rule) in rules.iter().enumerate() {
-                map.insert(i as u32, *rule, 0)?;
+                map.insert(i as u32, convert_rule(*rule), 0)?;
             }
 
             Ok(ServerMessage {
@@ -156,36 +158,54 @@ async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
 
 /// Handle the enabling of the firewall.
 async fn handle_enable(interface: String) -> anyhow::Result<ServerMessage> {
-    let mut overall_status = OVERALL_STATE.write().await;
+    {
+        let mut overall_status = OVERALL_STATE.write().await;
 
-    if overall_status.enabled || overall_status.state.is_some() {
-        anyhow::bail!("Firewall is already enabled");
+        if overall_status.enabled || overall_status.state.is_some() {
+            anyhow::bail!("Firewall is already enabled");
+        }
+
+        overall_status.enabled = true;
     }
-
-    overall_status.enabled = true;
 
     load_ebpf(vec![], interface).await?;
 
     Ok(ServerMessage {
         request_success: true,
-        message: None,
+        message: Some("Firewall enabled".to_string()),
     })
 }
 
 /// Handle the disabling of the firewall.
 async fn handle_disable() -> anyhow::Result<ServerMessage> {
-    let mut overall_status = OVERALL_STATE.write().await;
+    {
+        let mut overall_status = OVERALL_STATE.write().await;
 
-    if !overall_status.enabled || overall_status.state.is_none() {
-        anyhow::bail!("Firewall is already disabled");
+        if !overall_status.enabled || overall_status.state.is_none() {
+            anyhow::bail!("Firewall is already disabled");
+        }
+
+        overall_status.enabled = false;
     }
-
-    overall_status.enabled = false;
 
     unload_ebpf().await;
 
     Ok(ServerMessage {
         request_success: true,
-        message: None,
+        message: Some("Firewall disabled".to_string()),
     })
+}
+
+/// Convert a rule from the common format to the eBPF format for insertion into the map.
+fn convert_rule(rule: Rule) -> ghostwire_common::Rule {
+    ghostwire_common::Rule {
+        id: rule.id,
+        source_start_ip: rule.source_start_ip,
+        source_end_ip: rule.source_end_ip,
+        destination_start_ip: rule.destination_start_ip,
+        destination_end_ip: rule.destination_end_ip,
+        protocol_number: rule.protocol_number,
+        port_number: rule.port_number,
+        ratelimiting: rule.ratelimiting,
+    }
 }

@@ -35,7 +35,6 @@ pub struct ServerMessage {
 }
 
 /// A firewall rule
-#[repr(C)]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// A firewall rule in C format
 pub struct Rule {
@@ -61,6 +60,11 @@ pub struct Rule {
     /// seconds. If there's no ratelimiting rule, this is 0.
     pub ratelimiting: u32,
 }
+
+// trait implementations to make the map fulfill the TryFrom trait used by the hashmap
+// indicates our type can be converted from byte arrays
+// @see https://discord.com/channels/855676609003651072/855676609003651075/1244017102080315594
+
 
 /// A network protocol
 #[derive(Serialize, Deserialize, Debug)]

@@ -29,6 +29,15 @@ fn main() {
                 .short('f')
                 .long("file")
                 .help("Load the firewall rules from a configuration file"),
+            Arg::new("enable")
+                .short('e')
+                .long("enable")
+                .help("Enable the firewall"),
+            Arg::new("disable")
+                .short('d')
+                .long("disable")
+                .action(clap::ArgAction::SetTrue)
+                .help("Disable the firewall"),
         ])
         .get_matches();
 

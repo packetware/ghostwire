@@ -1,30 +1,20 @@
 use crate::utils::prometheus::handle_prom_listener;
-use anyhow::Context;
-use ghostwire_common::Rule;
 use lazy_static::lazy_static;
-use std::sync::Arc;
 use tokio::{
     signal,
-    sync::{
-        oneshot,
-        RwLock,
-    },
+    sync::RwLock,
     task,
 };
-use tokio_schedule::{
-    every,
-    Job,
-};
 use utils::{
-    ebpf::load_ebpf,
-    prometheus::create_prometheus_counters,
+    prometheus::{create_prometheus_counters, prometheus_metrics},
     socket::socket_server,
     state::OverallState,
 };
+use tokio_schedule::{every, Job};
 
 lazy_static! {
     /// State shared with the socket listener
-    static ref OVERALL_STATE: RwLock<OverallState> = RwLock::new(OverallState { enabled: false, state: None, analytic_handle: None, counters: create_prometheus_counters().expect("infallible prometheus counter generation failed") });
+    static ref OVERALL_STATE: RwLock<OverallState> = RwLock::new(OverallState { enabled: false, state: None, counters: create_prometheus_counters().expect("infallible prometheus counter generation failed") });
 }
 
 mod utils;
@@ -41,6 +31,13 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Start the UNIX socket server.
     task::spawn(socket_server());
+
+    // Start the Prometheus metrics task.
+    task::spawn(every(10).seconds().perform(|| {
+        async {
+            prometheus_metrics().await;
+        }
+    }));
 
     // Start the Prometheus HTTP listener.
     task::spawn(handle_prom_listener());
