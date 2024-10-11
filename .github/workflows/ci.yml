@@ -42,7 +42,7 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: bpf-linker,cargo-generate
+          tool: bpf-linker
 
       - name: cargo xtask build
         run: cargo xtask build
