@@ -34,4 +34,4 @@ jobs:
 
       - name: cargo xtask build
         working-directory: src/ebpf
-        run: cargo run --package xtask -- build
+        run: cargo xtask build
