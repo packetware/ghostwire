@@ -66,6 +66,6 @@ pub unsafe fn ghostwire_egress_fallible(tc: TcContext) -> Result<i32, ()> {
     // update the holepunched map
     let _ = HOLEPUNCHED.insert(&(key as u128), &bpf_ktime_get_ns(), 0);
 
-    // return the action to take
+    // Let traffic go through.
     Ok(TC_ACT_PIPE)
 }
