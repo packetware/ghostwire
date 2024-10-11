@@ -3,6 +3,7 @@
 use ghostwire_types::Rule;
 use serde::Deserialize;
 use std::net::Ipv4Addr;
+use anyhow::Context;
 
 /// Convert the YAML into firewall rules.
 pub fn parse_yaml(yaml: String) -> anyhow::Result<Vec<Rule>> {
@@ -66,7 +67,7 @@ fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
     let ip: Ipv4Addr = parts[0].parse().context("Invalid IP address")?;
     // The user didn't provide a prefix length. Assume it's a single ip (/32).
     let prefix_length: u8 = if parts.len() > 1 {
-        parts[1].parse().context("Invalid prefix length")?;
+        parts[1].parse().context("Invalid prefix length")?
     } else {
         32
     };

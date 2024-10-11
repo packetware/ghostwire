@@ -31,7 +31,7 @@ pub enum ClientReqType {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ServerMessage {
     pub request_success: bool,
-    pub message: Option<String>,
+    pub message: String,
 }
 
 /// A firewall rule

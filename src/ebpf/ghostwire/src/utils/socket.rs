@@ -75,7 +75,7 @@ async fn handle_server_request(
         Ok(t) => t,
         Err(e) => ServerMessage {
             request_success: false,
-            message: Some(format!("{}", e)),
+            message: format!("{}", e),
         },
     };
 
@@ -87,8 +87,6 @@ async fn handle_server_request(
 
 /// Once parsed to a ClientMessage, handle the request
 async fn handle_server_request_fallible(message: ClientMessage) -> anyhow::Result<ServerMessage> {
-    println!("Received: {:?}", message);
-
     match message.req_type {
         ClientReqType::STATUS => handle_status_request().await,
         ClientReqType::RULES => {
@@ -113,7 +111,7 @@ async fn handle_status_request() -> anyhow::Result<ServerMessage> {
 
     Ok(ServerMessage {
         request_success: true,
-        message: Some(overall_status.fmt().await),
+        message: overall_status.fmt().await,
     })
 }
 
@@ -147,7 +145,7 @@ async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
 
             Ok(ServerMessage {
                 request_success: true,
-                message: Some("Rules updated".to_string()),
+                message: "Rules updated".to_string(),
             })
         }
         None => {
@@ -172,7 +170,7 @@ async fn handle_enable(interface: String) -> anyhow::Result<ServerMessage> {
 
     Ok(ServerMessage {
         request_success: true,
-        message: Some("Firewall enabled".to_string()),
+        message: "Firewall enabled".to_string(),
     })
 }
 
@@ -192,7 +190,7 @@ async fn handle_disable() -> anyhow::Result<ServerMessage> {
 
     Ok(ServerMessage {
         request_success: true,
-        message: Some("Firewall disabled".to_string()),
+        message: "Firewall disabled".to_string(),
     })
 }
 
