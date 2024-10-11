@@ -1,0 +1,70 @@
+# Inspired by aya-template
+# @see https://github.com/aya-rs/aya-template/blob/main/.github/workflows/ci.yml
+
+name: ebpf
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  schedule:
+    - cron: 00 4 * * *
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ebpf:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: switch to nightly
+        run: |
+          rustup default nightly
+          rustup component add rustfmt --toolchain nightly
+          rustup component add clippy --toolchain nightly
+          rustup component add rust-src --toolchain nightly
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: bpf-linker
+
+      - name: rustfmt
+        run: |
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/main.rs
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/main.rs
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/utils/*
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-common/src/*
+          git diff --exit-code
+
+      - name: cargo xtask build
+        working-directory: src/ebpf
+        run: cargo run --package xtask -- build
+
+      - name: cargo xtask clippy
+        working-directory: src/ebpf
+        run: cargo run --package xtask -- clippy
+
+      - name: cargo socket server build
+        working-directory: src/ebpf/ghostwire
+        run: cargo build
+
+      - name: cargo socket server clippy
+        working-directory: src/ebpf/ghostwire
+        run: cargo clippy
+
+      - name: cargo common build
+        working-directory: src/ebpf/ghostwire-common
+        run: cargo build
+
+      - name: cargo common clippy
+        working-directory: src/ebpf/ghostwire-common
+        run: cargo clippy
