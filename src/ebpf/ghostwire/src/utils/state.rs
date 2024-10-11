@@ -59,7 +59,7 @@ pub struct PromCounters {
 
 impl OverallState {
     /// Implement format for OverallState that shows the overall status of the application. Not a trait
-    /// because we access the rule map async.
+    /// because we access the rule map async and blocking reads are a bad practice.
     pub async fn fmt(&self) -> String {
         let mut str = String::new();
 
