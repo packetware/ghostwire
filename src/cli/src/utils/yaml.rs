@@ -70,7 +70,6 @@ fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
     } else {
         32
     };
-    println!("IP: {:?}, Prefix: {}", ip, prefix_length);
     let mask = !((1u32 << (32 - prefix_length)) - 1);
 
     let start_ip = u32::from(ip) & mask;
