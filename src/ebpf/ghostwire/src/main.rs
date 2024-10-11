@@ -9,6 +9,7 @@ use utils::{
     prometheus::{create_prometheus_counters, prometheus_metrics},
     socket::socket_server,
     state::OverallState,
+    map_management::manage_maps,
 };
 use tokio_schedule::{every, Job};
 
@@ -41,6 +42,13 @@ async fn main() -> Result<(), anyhow::Error> {
     task::spawn(every(10).seconds().perform(|| {
         async {
             prometheus_metrics().await;
+        }
+    }));
+
+    // Begin to manage the eBPF maps.
+    task::spawn(every(1).minute().perform(|| {
+        async {
+            manage_maps().await;
         }
     }));
 

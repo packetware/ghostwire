@@ -40,8 +40,8 @@ pub static RULES: HashMap<u32, Rule> = HashMap::<u32, Rule>::with_max_entries(10
 #[map]
 /// The map which holds the ratelimiting metrics for ratelimiting-based rules. Key is a combination
 /// of IP address and rule ID.
-pub static RATELIMITING: LruHashMap<u64, u128> =
-    LruHashMap::<u64, u128>::with_max_entries(1_000_000, 0);
+pub static RATELIMITING: LruHashMap<u64, u64> =
+    LruHashMap::<u64, u64>::with_max_entries(1_000_000, 0);
 
 #[map]
 /// The map which holds the analytics for each firewall rule. Key is the rule ID.
@@ -74,7 +74,7 @@ pub fn ghostwire_xdp(ctx: XdpContext) -> u32 {
             Err(_) => xdp_action::XDP_ABORTED,
         };
 
-        // increment the analytics
+        // Record the XDP action taken.
         match XDP_ACTION_ANALYTICS.get_ptr_mut(&result) {
             Some(val) => *val += 1,
             None => {
@@ -95,7 +95,7 @@ pub fn ghostwire_tc(tc: TcContext) -> i32 {
             Err(_) => TC_ACT_SHOT,
         };
 
-        // increment the analytics
+        // Record the TC action taken.
         match TC_ACTION_ANALYTICS.get_ptr_mut(&result) {
             Some(val) => *val += 1,
             None => {

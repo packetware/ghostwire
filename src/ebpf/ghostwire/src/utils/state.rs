@@ -43,6 +43,8 @@ pub struct State {
     pub rule_map: RwLock<HashMap<MapData, u32, Rule>>,
     /// The rule metrics
     pub rule_analytic_map: HashMap<MapData, u32, RuleAnalytics>,
+    /// The ratelimit metrics
+    pub rule_ratelimit_map: RwLock<HashMap<MapData, u64, u64>>,
     /// The aggregate XDP metrics
     pub xdp_analytic_map: HashMap<MapData, u32, u128>,
     /// The aggregate traffic control metrics

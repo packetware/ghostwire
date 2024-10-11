@@ -29,8 +29,18 @@ use tokio_schedule::{
     Job,
 };
 
-/// Load the eBPF program, fetching the maps and creating state from partial arguments
 pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::Result<()> {
+    match load_ebpf_fallible(initial_rules, interface, false).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            tracing::warn!("failed to load eBPF with default flags, trying again in SKB: {}", e);
+            load_ebpf_fallible(initial_rules, interface, true).await
+        }
+    }
+}
+
+/// Load the eBPF program, fetching the maps and creating state from partial arguments
+async fn load_ebpf_fallible(initial_rules: Vec<Rule>, interface: String, skb: bool) -> anyhow::Result<()> {
     // Bump the memlock rlimit. This is needed for older kernels that don't use the
     // new memcg based accounting, see https://lwn.net/Articles/837122/
     let rlim = libc::rlimit {
@@ -52,26 +62,32 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
     ))?;
 
     if let Err(e) = BpfLogger::init(&mut bpf) {
-        // This can happen if you remove all log statements from your eBPF program.
+        // If the logger doesn't intialize, we probably weren't logging anything.
         tracing::info!("didn't initialize eBPF logger: {}", e);
     }
 
     let program: &mut Xdp = bpf.program_mut("ghostwire_xdp").unwrap().try_into()?;
     program.load().unwrap();
-    program.attach(&interface, XdpFlags::SKB_MODE)
-        .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
+    program.attach(&interface, match skb {
+        true => XdpFlags::SKB_MODE,
+        false => XdpFlags::default(),
+    })
+        .context("failed to attach XDP. trying with SKB next...")?;
     let _ = tc::qdisc_add_clsact(&interface);
 
     let program: &mut SchedClassifier = bpf.program_mut("ghostwire_tc").unwrap().try_into()?;
     program.load()?;
     program.attach(&interface, TcAttachType::Egress)?;
 
-    // fetch the eBPF maps
+    // Fetch the eBPF maps.
     let mut rule_map: HashMap<_, u32, Rule> = HashMap::try_from(bpf.take_map("RULES").unwrap())?;
 
     for (i, rule) in initial_rules.iter().enumerate() {
         rule_map.insert(i as u32, rule, 0)?;
     }
+
+    let rule_ratelimit_map: HashMap<_, u64, u64> =
+        HashMap::try_from(bpf.take_map("RATELIMITING").unwrap())?;
 
     let rule_analytic_map: HashMap<_, u32, RuleAnalytics> =
         HashMap::try_from(bpf.take_map("RULE_ANALYTICS").unwrap())?;
@@ -86,6 +102,7 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
         interface,
         ebpf: RwLock::new(bpf),
         rule_map: RwLock::new(rule_map),
+        rule_ratelimit_map: RwLock::new(rule_ratelimit_map),
         rule_analytic_map,
         xdp_analytic_map,
         tc_analytic_map,

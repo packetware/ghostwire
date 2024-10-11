@@ -80,26 +80,23 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
     // we're using maps and not an array because arrays are immutable, meanwhile we can update maps
     // on the fly
     for index in 0..100 {
-        // if there's a rule matching this traffic
         if let Some(rule) = RULES.get(&index) {
             if src_ip >= rule.source_start_ip && src_ip <= rule.source_end_ip {
-                // determine if we need to do a protocol comparison
+                // Determine if should perform a protocol check.
                 if rule.protocol_number != 0 {
                     if rule.protocol_number != protocol as u8 {
                         continue;
                     }
 
-                    // if we need to do a port comparison
+                    // Compare port if relevant.
                     if rule.port_number != 0 {
-                        // if the port doesn't match, continue
-                        aya_log_ebpf::info!(&ctx, "{}, {}", rule.port_number, dst_port);
                         if rule.port_number != dst_port {
                             continue;
                         }
                     }
                 }
 
-                // update the metric for this rule
+                // Indicate we have evaulated this rule.
                 match RULE_ANALYTICS.get_ptr_mut(&rule.id) {
                     Some(analytics) => {
                         (*analytics).evaluated += 1;
@@ -117,11 +114,11 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                     }
                 }
 
-                // determine if we need to do ratelimiting
+                // Determine if we should perform ratelimiting.
                 if rule.ratelimiting != 0 {
-                    // get the ratelimiting key
+                    // Create a ratelimit key. This is a combination of the source IP and the rule ID.
                     let key = (src_ip + rule.id) as u64;
-                    // get the ratelimiting value
+                    // Fetch and increment ratelimit value for this key.
                     let current_value = match RATELIMITING.get_ptr_mut(&key) {
                         Some(value) => {
                             *value += 1;
@@ -187,13 +184,13 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
 
     match HOLEPUNCHED.get_ptr_mut(&key) {
         Some(last_time) => {
-            // update the time
+            // Update the time of the connection.
             (*last_time) = bpf_ktime_get_ns();
 
             Ok(XDP_PASS)
         }
         None => {
-            // drop it if it matches no other case
+            // Drop the connection if no other case is met.
             Ok(XDP_DROP)
         }
     }
