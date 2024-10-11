@@ -25,11 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@nightly
+      - name: change directory to ebpf
+        run: cd src/ebpf
+
+      - name: install the nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: install the stable toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
 
@@ -40,5 +45,4 @@ jobs:
           tool: bpf-linker,cargo-generate
 
       - name: cargo xtask build
-        working-directory: src/ebpf
         run: cargo xtask build
