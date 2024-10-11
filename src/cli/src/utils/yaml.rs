@@ -60,10 +60,13 @@ fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
         return Ok((0, u32::MAX));
     }
 
+    // Break up the subnet from the IP.
     let parts: Vec<&str> = ip_range.split('/').collect();
-    let ip: Ipv4Addr = parts[0].parse().expect("Invalid IP address");
+    // Parse the IPv4 part.
+    let ip: Ipv4Addr = parts[0].parse().context("Invalid IP address")?;
+    // The user didn't provide a prefix length. Assume it's a single ip (/32).
     let prefix_length: u8 = if parts.len() > 1 {
-        parts[1].parse().expect("Invalid prefix length")
+        parts[1].parse().context("Invalid prefix length")?;
     } else {
         32
     };
