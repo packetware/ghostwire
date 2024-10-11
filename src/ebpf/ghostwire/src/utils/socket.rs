@@ -67,6 +67,7 @@ async fn handle_stream(mut stream: UnixStream) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Handle a message from the socket client.
 async fn handle_server_request(
     message: ClientMessage,
     mut stream: UnixStream,
