@@ -9,7 +9,6 @@ use ghostwire_types::{
 };
 use utils::handler::handle_arguments;
 
-/// The CLI is a thin wrapper around the Unix socket exposed by the firewall
 mod utils;
 
 /// Core CLI handler
