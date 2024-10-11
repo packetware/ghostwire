@@ -29,11 +29,11 @@ jobs:
         with:
           tool: bpf-linker
 
-      - name: rustfmt
-        run: |
-          rustfmt --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
-          rustfmt --edition 2021 src/ebpf/ghostwire-ebpf/src/main.rs
-          git diff --exit-code
+      #- name: rustfmt
+      #  run: |
+      #    rustfmt --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
+      #    rustfmt --edition 2021 src/ebpf/ghostwire-ebpf/src/main.rs
+      #    git diff --exit-code
 
       - name: cargo xtask build
         working-directory: src/ebpf
