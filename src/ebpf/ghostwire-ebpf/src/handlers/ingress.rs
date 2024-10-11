@@ -182,7 +182,8 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
         }
     }
 
-    let key = (src_ip as u64 + src_port as u64 + dst_ip as u64 + dst_port as u64) as u128;
+    // Create a key for the holepunched map, upgrading the type to u64 to avoid overflow
+    let key = src_ip as u64 + src_port as u64 + dst_ip as u64 + dst_port as u64;
 
     match HOLEPUNCHED.get_ptr_mut(&key) {
         Some(last_time) => {

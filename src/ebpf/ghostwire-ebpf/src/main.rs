@@ -41,7 +41,7 @@ pub static RULES: HashMap<u32, Rule> = HashMap::<u32, Rule>::with_max_entries(10
 /// The map which holds the ratelimiting metrics for ratelimiting-based rules. Key is a combination
 /// of IP address and rule ID.
 pub static RATELIMITING: LruHashMap<u64, u128> =
-    LruHashMap::<u64, u128>::with_max_entries(10_000, 0);
+    LruHashMap::<u64, u128>::with_max_entries(1_000_000, 0);
 
 #[map]
 /// The map which holds the analytics for each firewall rule. Key is the rule ID.
@@ -51,7 +51,7 @@ pub static RULE_ANALYTICS: HashMap<u32, RuleAnalytics> =
 #[map]
 /// The holepunched connections (leaving the server). Key is source IP + source port + destination
 /// IP + destination port. Value is the time the last time there was traffic over this connection.
-pub static HOLEPUNCHED: LruHashMap<u128, u64> = LruHashMap::<u128, u64>::with_max_entries(1_000, 0);
+pub static HOLEPUNCHED: LruHashMap<u64, u64> = LruHashMap::<u64, u64>::with_max_entries(1_000_000, 0);
 
 #[map]
 /// Whenever an action is completed IN XDP, like DROP, PASS, or ABORT, report that in this map. Designed
