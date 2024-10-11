@@ -39,9 +39,6 @@ pub struct RuleAnalytics {
     pub passed: u128,
 }
 
-// trait implementations to make the map fulfill the TryFrom trait used by the hashmap
-// indicates our type can be converted from byte arrays
-// @see https://discord.com/channels/855676609003651072/855676609003651075/1244017102080315594
 #[cfg(feature = "user")]
 unsafe impl aya::Pod for Rule {}
 #[cfg(feature = "user")]
