@@ -25,6 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: switch to nightly
+        run: rustup default nightly
+
       - uses: taiki-e/install-action@v2
         with:
           tool: bpf-linker
