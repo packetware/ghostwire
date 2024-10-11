@@ -82,9 +82,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
     for index in 0..100 {
         // if there's a rule matching this traffic
         if let Some(rule) = RULES.get(&index) {
-            if rule.source_start_ip == 0
-                || (src_ip >= rule.source_start_ip && src_ip <= rule.source_end_ip)
-            {
+            if src_ip >= rule.source_start_ip && src_ip <= rule.source_end_ip {
                 // determine if we need to do a protocol comparison
                 if rule.protocol_number != 0 {
                     if rule.protocol_number != protocol as u8 {
