@@ -23,6 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: switch to nightly
+        run: |
+          rustup default nightly
+          rustup component add rustfmt --toolchain nightly
+          rustup component add clippy --toolchain nightly
+          rustup component add rust-src --toolchain nightly
+
       - name: rustfmt
         run: |
           rustfmt --config-path rustfmt.toml --edition 2021 src/cli/src/main.rs

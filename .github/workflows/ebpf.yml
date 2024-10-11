@@ -54,17 +54,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: switch to nightly
+        run: |
+          rustup default nightly
+          rustup component add rustfmt --toolchain nightly
+          rustup component add clippy --toolchain nightly
+          rustup component add rust-src --toolchain nightly
+
       - name: rustfmt
         run: |
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/main.rs
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/utils/*
           git diff --exit-code
 
-      - name: cargo build
+      - name: cargo xtask build
         working-directory: src/ebpf/ghostwire
         run: cargo build
 
-      - name: cargo clippy
+      - name: cargo xtask clippy
         working-directory: src/ebpf/ghostwire
         run: cargo clippy
 
@@ -74,11 +81,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: switch to nightly
+        run: |
+          rustup default nightly
+          rustup component add rustfmt --toolchain nightly
+          rustup component add clippy --toolchain nightly
+          rustup component add rust-src --toolchain nightly
+
       - name: rustfmt
         run: |
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-common/src/*
           git diff --exit-code
-
       - name: cargo build
         working-directory: src/ebpf/ghostwire-common
         run: cargo build
