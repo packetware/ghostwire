@@ -51,7 +51,8 @@ pub static RULE_ANALYTICS: HashMap<u32, RuleAnalytics> =
 #[map]
 /// The holepunched connections (leaving the server). Key is source IP + source port + destination
 /// IP + destination port. Value is the time the last time there was traffic over this connection.
-pub static HOLEPUNCHED: LruHashMap<u64, u64> = LruHashMap::<u64, u64>::with_max_entries(1_000_000, 0);
+pub static HOLEPUNCHED: LruHashMap<u64, u64> =
+    LruHashMap::<u64, u64>::with_max_entries(1_000_000, 0);
 
 #[map]
 /// Whenever an action is completed IN XDP, like DROP, PASS, or ABORT, report that in this map. Designed
@@ -65,6 +66,7 @@ pub static XDP_ACTION_ANALYTICS: HashMap<u32, u128> =
 pub static TC_ACTION_ANALYTICS: HashMap<i32, u128> = HashMap::<i32, u128>::with_max_entries(100, 0);
 
 #[xdp]
+/// The infallible XDP hook for all incoming traffic.
 pub fn ghostwire_xdp(ctx: XdpContext) -> u32 {
     unsafe {
         let result = match ghostwire_ingress_fallible(ctx) {
@@ -85,6 +87,7 @@ pub fn ghostwire_xdp(ctx: XdpContext) -> u32 {
 }
 
 #[classifier]
+/// The infallible TC hook for all outgoing traffic.
 pub fn ghostwire_tc(tc: TcContext) -> i32 {
     unsafe {
         let result = match ghostwire_egress_fallible(tc) {

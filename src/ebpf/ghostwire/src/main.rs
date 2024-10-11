@@ -13,7 +13,7 @@ use utils::{
 use tokio_schedule::{every, Job};
 
 lazy_static! {
-    /// State shared with the socket listener
+    /// State shared with the socket listener.
     static ref OVERALL_STATE: RwLock<OverallState> = RwLock::new(OverallState { enabled: false, state: None, counters: create_prometheus_counters().expect("infallible prometheus counter generation failed") });
 }
 
@@ -23,10 +23,13 @@ mod utils;
 async fn main() -> Result<(), anyhow::Error> {
     println!("Starting Ghostwire ...");
 
+    // Set our own tracing subscriber.
     tracing_subscriber::fmt::Subscriber::builder()
         .pretty()
+        .with_max_level(tracing::Level::TRACE)
         .finish();
 
+    // Start the Aya logger.
     env_logger::init();
 
     // TODO: read the previous state on startup (@see utils/bootloader.rs)
@@ -44,7 +47,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // Start the Prometheus HTTP listener.
     task::spawn(handle_prom_listener());
 
-    // Allow the user to unload the eBPF program with Ctrl-C.
+    // Allow the user to unload the eBPF program and the socket server with Ctrl-C.
     tracing::info!("Waiting for Ctrl-C...");
 
     signal::ctrl_c().await?;

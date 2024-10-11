@@ -1,6 +1,9 @@
 extern crate serde;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 // Types for firewall rules, messages
 
@@ -8,9 +11,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ClientMessage {
     pub req_type: ClientReqType,
-    /// Optional rules to send to the server on a RULES request 
+    /// Optional rules to send to the server on a RULES request
     pub rules: Option<Vec<Rule>>,
-    /// Optional interface to send to the server on a RULES request 
+    /// Optional interface to send to the server on a RULES request
     pub interface: Option<String>,
 }
 
@@ -34,9 +37,10 @@ pub struct ServerMessage {
     pub message: String,
 }
 
-/// A firewall rule
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-/// A firewall rule in C format
+/// A firewall rule in C format, where fields are expected to be in big endian, or network byte order
+/// You may have noticed this also exists in the ghostwire_types crate. This is because that's the specific type
+/// that is used in the eBPF program.
 pub struct Rule {
     /// The ID of this rule with what the API identifies it as. This will also be the key of the
     /// ratelimiting map if ratelimiting is enabled for this rule.
@@ -61,12 +65,7 @@ pub struct Rule {
     pub ratelimiting: u32,
 }
 
-// trait implementations to make the map fulfill the TryFrom trait used by the hashmap
-// indicates our type can be converted from byte arrays
-// @see https://discord.com/channels/855676609003651072/855676609003651075/1244017102080315594
-
-
-/// A network protocol
+/// A network protocol. This is used in the Rule struct to determine what protocol the rule applies to.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Protocol {
     TCP,

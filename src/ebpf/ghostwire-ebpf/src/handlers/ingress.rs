@@ -92,7 +92,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                     // if we need to do a port comparison
                     if rule.port_number != 0 {
                         // if the port doesn't match, continue
-                    aya_log_ebpf::info!(&ctx, "{}, {}", rule.port_number, dst_port);
+                        aya_log_ebpf::info!(&ctx, "{}, {}", rule.port_number, dst_port);
                         if rule.port_number != dst_port {
                             continue;
                         }
@@ -174,7 +174,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                     }
                 }
 
-                // passed source / dest ip checks, port checks, and ratelimiting wasn't enabled
+                // Packet passed protocol conformity checks and ratelimit (if enabled)
                 return Ok(XDP_PASS);
             }
         } else {

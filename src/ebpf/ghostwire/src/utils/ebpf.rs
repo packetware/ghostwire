@@ -42,10 +42,6 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
         tracing::debug!("remove limit on locked memory failed, ret is: {}", ret);
     }
 
-    // This will include your eBPF object file as raw bytes at compile-time and load it at
-    // runtime. This approach is recommended for most real-world use cases. If you would
-    // like to specify the eBPF program at runtime rather than at compile-time, you can
-    // reach for `Bpf::load_file` instead.
     #[cfg(debug_assertions)]
     let mut bpf = Bpf::load(include_bytes_aligned!(
         "../../../target/bpfel-unknown-none/debug/ghostwire"
@@ -57,7 +53,7 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
 
     if let Err(e) = BpfLogger::init(&mut bpf) {
         // This can happen if you remove all log statements from your eBPF program.
-        tracing::warn!("failed to initialize eBPF logger: {}", e);
+        tracing::info!("didn't initialize eBPF logger: {}", e);
     }
 
     let program: &mut Xdp = bpf.program_mut("ghostwire_xdp").unwrap().try_into()?;
@@ -110,8 +106,6 @@ pub async fn unload_ebpf() {
     // writing None to the state necessarily will drop the eBPF program
     // @see https://aya-rs.dev/book/aya/lifecycle/#populating-our-map-from-userspace
     // a critical assumption is that the state is not being used anywhere else in the program (this
-    // assumption is currently correct, these are the only two references persistently reading
-    // state)
+    // assumption is currently correct, this is the only reference persistently held to the state)
     write.state = None;
 }
-
