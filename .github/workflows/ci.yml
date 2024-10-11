@@ -1,0 +1,65 @@
+# From aya-template
+# @see https://github.com/aya-rs/aya-template/blob/main/.github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  schedule:
+    - cron: 00 4 * * *
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        program:
+          - kprobe
+          - kretprobe
+          - fentry
+          - fexit
+          - uprobe
+          - uretprobe
+          - sock_ops
+          - socket_filter
+          - sk_msg
+          - xdp
+          - cgroup_skb
+          - cgroup_sockopt
+          - cgroup_sysctl
+          - classifier
+          - lsm
+          - perf_event
+          - raw_tracepoint
+          - tp_btf
+          - tracepoint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: bpf-linker,cargo-generate
+
+      - run: ./test.sh ${{ github.workspace }} ${{ matrix.program }}
