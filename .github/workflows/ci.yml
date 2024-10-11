@@ -19,31 +19,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        program:
-          - kprobe
-          - kretprobe
-          - fentry
-          - fexit
-          - uprobe
-          - uretprobe
-          - sock_ops
-          - socket_filter
-          - sk_msg
-          - xdp
-          - cgroup_skb
-          - cgroup_sockopt
-          - cgroup_sysctl
-          - classifier
-          - lsm
-          - perf_event
-          - raw_tracepoint
-          - tp_btf
-          - tracepoint
+  ebpf:
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -62,4 +39,6 @@ jobs:
         with:
           tool: bpf-linker,cargo-generate
 
-      - run: ./test.sh ${{ github.workspace }} ${{ matrix.program }}
+      - name: cargo xtask build
+        working-directory: src/ebpf
+        run: cargo xtask build
