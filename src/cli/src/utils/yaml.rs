@@ -15,9 +15,6 @@ pub fn parse_yaml(yaml: String) -> anyhow::Result<Vec<Rule>> {
         .map(|(id, yaml_rule)| convert_to_rule(yaml_rule, id as u32))
         .collect::<Result<Vec<Rule>, anyhow::Error>>()?;
 
-    for rule in parsed_rules.iter() {
-        println!("{:?}", rule);
-    }
 
     Ok(parsed_rules)
 }
