@@ -44,11 +44,11 @@ jobs:
 
       - name: cargo xtask build
         working-directory: src/ebpf
-        run: cargo run --locked --package xtask -- build
+        run: cargo run --package xtask -- build
 
       - name: cargo xtask clippy
         working-directory: src/ebpf
-        run: cargo run --locked --package xtask -- clippy
+        run: cargo run --package xtask -- clippy
 
   socket-server:
     runs-on: ubuntu-22.04
@@ -71,11 +71,11 @@ jobs:
 
       - name: cargo build
         working-directory: src/ebpf/ghostwire
-        run: cargo build --locked
+        run: cargo build
 
       - name: cargo clippy
         working-directory: src/ebpf/ghostwire
-        run: cargo clippy --locked
+        run: cargo clippy
 
   common:
     runs-on: ubuntu-22.04
