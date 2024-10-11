@@ -28,18 +28,6 @@ jobs:
       - name: change directory to ebpf
         run: cd src/ebpf
 
-      - name: install the nightly toolchain
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rust-src
-
-      - name: install the stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-
-      - uses: Swatinem/rust-cache@v2
-
       - uses: taiki-e/install-action@v2
         with:
           tool: bpf-linker
