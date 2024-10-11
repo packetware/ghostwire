@@ -1,0 +1,38 @@
+# Inspired by aya-template
+# @see https://github.com/aya-rs/aya-template/blob/main/.github/workflows/ci.yml
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  schedule:
+    - cron: 00 4 * * *
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cli:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: rustfmt
+        run: |
+          rustfmt --config-path rustfmt.toml --edition 2021 src/cli/src/main.rs
+          rustfmt --config-path rustfmt.toml --edition 2021 src/cli/src/utils/*.rs
+          git diff --exit-code
+
+      - name: cargo build
+        working-directory: src/cli
+        run: cargo build
+
+      - name: cargo clippy
+        working-directory: src/cli
+        run: cargo clippy

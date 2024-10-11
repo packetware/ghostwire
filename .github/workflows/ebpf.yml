@@ -1,8 +1,6 @@
 # Inspired by aya-template
 # @see https://github.com/aya-rs/aya-template/blob/main/.github/workflows/ci.yml
 
-name: CI
-
 on:
   push:
     branches:
@@ -38,8 +36,8 @@ jobs:
 
       - name: rustfmt
         run: |
-          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/main.rs
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
           git diff --exit-code
 
       - name: cargo xtask build
@@ -49,3 +47,42 @@ jobs:
       - name: cargo xtask clippy
         working-directory: src/ebpf
         run: cargo run --package xtask -- clippy
+
+  socket-server:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: rustfmt
+        run: |
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/main.rs
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/utils/*
+          git diff --exit-code
+
+      - name: cargo build
+        working-directory: src/ebpf/ghostwire
+        run: cargo build
+
+      - name: cargo clippy
+        working-directory: src/ebpf/ghostwire
+        run: cargo clippy
+
+  common:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: rustfmt
+        run: |
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-common/src/*
+          git diff --exit-code
+
+      - name: cargo build
+        working-directory: src/ebpf/ghostwire-common
+        run: cargo build
+
+      - name: cargo clippy
+        working-directory: src/ebpf/ghostwire-common
+        run: cargo clippy
