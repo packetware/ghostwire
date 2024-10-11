@@ -37,7 +37,7 @@ use ghostwire_common::RuleAnalytics;
 /// 2. Look for rules;
 ///     - Evaluating rules to see if they're applicable to this rule
 ///     - Performing ratelimiting if the rule has it enabled
-/// 3. Look for entries that are holepunched:
+/// 3. Look for entries that are holepunched;
 ///     - Since we're a stateful firewall, look for when we established a connection outbound and allow that traffic back in
 ///     - When connections are terminated (like if the client sends a FIN or RST to the port), remove from the holepunched map
 /// 4. Drop traffic
