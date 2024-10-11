@@ -89,10 +89,8 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                     }
 
                     // Compare port if relevant.
-                    if rule.port_number != 0 {
-                        if rule.port_number != dst_port {
-                            continue;
-                        }
+                    if rule.port_number != 0 && rule.port_number != dst_port {
+                        continue;
                     }
                 }
 
@@ -131,7 +129,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                     };
 
                     // if we've exceeded the ratelimiting, drop the packet
-                    if rule.ratelimiting as u128 >= current_value {
+                    if rule.ratelimiting as u64 >= current_value {
                         // update the metric for this rule
                         match RULE_ANALYTICS.get_ptr_mut(&rule.id) {
                             Some(analytics) => {

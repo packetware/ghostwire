@@ -51,7 +51,7 @@ pub unsafe fn ghostwire_egress_fallible(tc: TcContext) -> Result<i32, ()> {
             // Check if the connection is being closed.
             // Currently, this is limited to the RST flag. The problem with FIN is the server will
             // keep waiting for the generic ACK to close the connection, which will never come if
-            // we remove it from the map. A potential solution is to create another map for pending 
+            // we remove it from the map. A potential solution is to create another map for pending
             // closing connections.
             if unsafe { (*tcp_header)._bitfield_1.get(3, 1) } != 0 {
                 remove = true;

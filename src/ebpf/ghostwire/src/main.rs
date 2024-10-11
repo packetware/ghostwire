@@ -5,13 +5,19 @@ use tokio::{
     sync::RwLock,
     task,
 };
+use tokio_schedule::{
+    every,
+    Job,
+};
 use utils::{
-    prometheus::{create_prometheus_counters, prometheus_metrics},
+    map_management::manage_maps,
+    prometheus::{
+        create_prometheus_counters,
+        prometheus_metrics,
+    },
     socket::socket_server,
     state::OverallState,
-    map_management::manage_maps,
 };
-use tokio_schedule::{every, Job};
 
 lazy_static! {
     /// State shared with the socket listener.
@@ -39,17 +45,13 @@ async fn main() -> Result<(), anyhow::Error> {
     task::spawn(socket_server());
 
     // Start the Prometheus metrics task.
-    task::spawn(every(10).seconds().perform(|| {
-        async {
-            prometheus_metrics().await;
-        }
+    task::spawn(every(10).seconds().perform(|| async {
+        prometheus_metrics().await;
     }));
 
     // Begin to manage the eBPF maps.
-    task::spawn(every(1).minute().perform(|| {
-        async {
-            manage_maps().await;
-        }
+    task::spawn(every(1).minute().perform(|| async {
+        manage_maps().await;
     }));
 
     // Start the Prometheus HTTP listener.

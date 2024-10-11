@@ -19,28 +19,27 @@ use ghostwire_common::{
     RuleAnalytics,
 };
 use std::sync::Arc;
-use tokio::{
-    sync::RwLock,
-    task,
-    task::AbortHandle,
-};
-use tokio_schedule::{
-    every,
-    Job,
-};
+use tokio::sync::RwLock;
 
 pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::Result<()> {
-    match load_ebpf_fallible(initial_rules, interface, false).await {
+    match load_ebpf_fallible(initial_rules.clone(), interface.clone(), false).await {
         Ok(_) => Ok(()),
         Err(e) => {
-            tracing::warn!("failed to load eBPF with default flags, trying again in SKB: {}", e);
+            tracing::warn!(
+                "failed to load eBPF with default flags, trying again in SKB: {}",
+                e
+            );
             load_ebpf_fallible(initial_rules, interface, true).await
         }
     }
 }
 
 /// Load the eBPF program, fetching the maps and creating state from partial arguments
-async fn load_ebpf_fallible(initial_rules: Vec<Rule>, interface: String, skb: bool) -> anyhow::Result<()> {
+async fn load_ebpf_fallible(
+    initial_rules: Vec<Rule>,
+    interface: String,
+    skb: bool,
+) -> anyhow::Result<()> {
     // Bump the memlock rlimit. This is needed for older kernels that don't use the
     // new memcg based accounting, see https://lwn.net/Articles/837122/
     let rlim = libc::rlimit {
@@ -68,10 +67,14 @@ async fn load_ebpf_fallible(initial_rules: Vec<Rule>, interface: String, skb: bo
 
     let program: &mut Xdp = bpf.program_mut("ghostwire_xdp").unwrap().try_into()?;
     program.load().unwrap();
-    program.attach(&interface, match skb {
-        true => XdpFlags::SKB_MODE,
-        false => XdpFlags::default(),
-    })
+    program
+        .attach(
+            &interface,
+            match skb {
+                true => XdpFlags::SKB_MODE,
+                false => XdpFlags::default(),
+            },
+        )
         .context("failed to attach XDP. trying with SKB next...")?;
     let _ = tc::qdisc_add_clsact(&interface);
 
@@ -100,7 +103,7 @@ async fn load_ebpf_fallible(initial_rules: Vec<Rule>, interface: String, skb: bo
 
     let state = Arc::new(State {
         interface,
-        ebpf: RwLock::new(bpf),
+        _ebpf: RwLock::new(bpf),
         rule_map: RwLock::new(rule_map),
         rule_ratelimit_map: RwLock::new(rule_ratelimit_map),
         rule_analytic_map,

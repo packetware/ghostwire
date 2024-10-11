@@ -1,9 +1,8 @@
+use anyhow::Context;
 /// This file is dedicated to the YAML chief Dobri.
-
 use ghostwire_types::Rule;
 use serde::Deserialize;
 use std::net::Ipv4Addr;
-use anyhow::Context;
 
 /// Convert the YAML into firewall rules.
 pub fn parse_yaml(yaml: String) -> anyhow::Result<Vec<Rule>> {
@@ -15,7 +14,6 @@ pub fn parse_yaml(yaml: String) -> anyhow::Result<Vec<Rule>> {
         .enumerate()
         .map(|(id, yaml_rule)| convert_to_rule(yaml_rule, id as u32))
         .collect::<Result<Vec<Rule>, anyhow::Error>>()?;
-
 
     Ok(parsed_rules)
 }
@@ -75,7 +73,6 @@ fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
 
     let start_ip = u32::from(ip) & mask;
     let end_ip = start_ip | !mask;
-
 
     Ok((start_ip.to_be(), end_ip.to_be()))
 }

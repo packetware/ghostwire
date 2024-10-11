@@ -1,9 +1,10 @@
-use crate::OVERALL_STATE;
-use aya::maps::{
-    HashMap,
-    MapData,
+use aya::{
+    maps::{
+        HashMap,
+        MapData,
+    },
+    Bpf,
 };
-use aya::Bpf;
 use ghostwire_common::{
     Rule,
     RuleAnalytics,
@@ -12,17 +13,8 @@ use prometheus::{
     IntCounterVec,
     Registry,
 };
-use std::{
-    fmt::{
-        Display,
-        Formatter,
-    },
-    sync::Arc,
-};
-use tokio::{
-    sync::RwLock,
-    task::AbortHandle,
-};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// The overall state of the firewall, to be exposed to the CLI
 pub struct OverallState {
@@ -35,8 +27,8 @@ pub struct OverallState {
 
 /// The state of the firewall when active
 pub struct State {
-    /// Reference to the eBPF program
-    pub ebpf: RwLock<Bpf>,
+    /// Reference to the eBPF program. Held to avoid dropping the program.
+    pub _ebpf: RwLock<Bpf>,
     /// The interface to apply the XDP hook to
     pub interface: String,
     /// The applied rules

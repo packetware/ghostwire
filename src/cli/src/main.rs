@@ -1,11 +1,6 @@
-use crate::utils::socket::send_message;
 use clap::{
     Arg,
     Command,
-};
-use ghostwire_types::{
-    ClientMessage,
-    ClientReqType,
 };
 use utils::handler::handle_arguments;
 
@@ -19,8 +14,7 @@ fn main() {
         .author("Whole Lotta Heart, Corp.")
         .about("Ghostwire is a stateful XDP firewall")
         .subcommands([
-            Command::new("status")
-                .about("Gets the current status of the firewall"),
+            Command::new("status").about("Gets the current status of the firewall"),
             Command::new("enable")
                 .about("Enable the firewall")
                 .args([Arg::new("interface").required(true)]),

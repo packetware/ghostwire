@@ -1,6 +1,14 @@
-use ghostwire_types::{ClientMessage, ServerMessage};
-use std::io::{Read, Write};
-use std::os::unix::net::UnixStream;
+use ghostwire_types::{
+    ClientMessage,
+    ServerMessage,
+};
+use std::{
+    io::{
+        Read,
+        Write,
+    },
+    os::unix::net::UnixStream,
+};
 
 /// Send a message to the firewall, erroring if unsuccessful
 pub fn send_message(client_message: ClientMessage) -> anyhow::Result<String> {

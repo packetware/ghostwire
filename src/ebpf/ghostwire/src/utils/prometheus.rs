@@ -73,51 +73,50 @@ pub fn create_prometheus_counters() -> anyhow::Result<PromCounters> {
 pub async fn prometheus_metrics() {
     let overall_state = OVERALL_STATE.read().await;
 
-    if let Some(state) = &overall_state.state { 
+    if let Some(state) = &overall_state.state {
+        for (key, value) in state.rule_analytic_map.iter().flatten() {
+            let evaluated_diff = value.evaluated
+                - overall_state
+                    .counters
+                    .rule_evaluated
+                    .with_label_values(&[&key.to_string()])
+                    .get() as u128;
 
-    for (key, value) in state.rule_analytic_map.iter().flatten() {
-        let evaluated_diff = value.evaluated
-            - overall_state
+            overall_state
                 .counters
                 .rule_evaluated
                 .with_label_values(&[&key.to_string()])
-                .get() as u128;
+                .inc_by(evaluated_diff as u64);
 
-        overall_state
-            .counters
-            .rule_evaluated
-            .with_label_values(&[&key.to_string()])
-            .inc_by(evaluated_diff as u64);
+            let passed_diff = value.passed
+                - overall_state
+                    .counters
+                    .rule_passed
+                    .with_label_values(&[&key.to_string()])
+                    .get() as u128;
 
-        let passed_diff = value.passed
-            - overall_state
+            overall_state
                 .counters
                 .rule_passed
                 .with_label_values(&[&key.to_string()])
-                .get() as u128;
+                .inc_by(passed_diff as u64);
+        }
 
-        overall_state
-            .counters
-            .rule_passed
-            .with_label_values(&[&key.to_string()])
-            .inc_by(passed_diff as u64);
-    }
+        for (key, value) in state.xdp_analytic_map.iter().flatten() {
+            overall_state
+                .counters
+                .xdp_action
+                .with_label_values(&[xdp_action_to_string(key)])
+                .inc_by(value as u64);
+        }
 
-    for (key, value) in state.xdp_analytic_map.iter().flatten() {
-        overall_state
-            .counters
-            .xdp_action
-            .with_label_values(&[xdp_action_to_string(key)])
-            .inc_by(value as u64);
-    }
-
-    for (key, value) in state.tc_analytic_map.iter().flatten() {
-        overall_state
-            .counters
-            .tc_action
-            .with_label_values(&[tc_action_to_string(key)])
-            .inc_by(value as u64);
-    }
+        for (key, value) in state.tc_analytic_map.iter().flatten() {
+            overall_state
+                .counters
+                .tc_action
+                .with_label_values(&[tc_action_to_string(key)])
+                .inc_by(value as u64);
+        }
     }
 }
 
