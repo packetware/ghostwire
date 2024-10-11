@@ -18,25 +18,16 @@ fn main() {
         .version("0.1")
         .author("Whole Lotta Heart, Corp.")
         .about("Ghostwire is a stateful XDP firewall")
-        .args([
-            Arg::new("status")
-                .short('s')
-                .long("status")
-                .action(clap::ArgAction::SetTrue)
-                .help("Gets the current status of the firewall"),
-            Arg::new("file")
-                .short('f')
-                .long("file")
-                .help("Load the firewall rules from a configuration file"),
-            Arg::new("enable")
-                .short('e')
-                .long("enable")
-                .help("Enable the firewall"),
-            Arg::new("disable")
-                .short('d')
-                .long("disable")
-                .action(clap::ArgAction::SetTrue)
-                .help("Disable the firewall"),
+        .subcommands([
+            Command::new("status")
+                .about("Gets the current status of the firewall"),
+            Command::new("enable")
+                .about("Enable the firewall")
+                .args([Arg::new("interface").required(true)]),
+            Command::new("disable").about("Disable the firewall"),
+            Command::new("load")
+                .about("Load the firewall rules from a configuration file")
+                .args([Arg::new("file").required(true)]),
         ])
         .get_matches();
 
