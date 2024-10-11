@@ -4,8 +4,8 @@ use ghostwire_types::Rule;
 use serde::Deserialize;
 use std::net::Ipv4Addr;
 
-/// Convert the YAML into firewall rules.
-pub fn parse_yaml(yaml: String) -> anyhow::Result<Vec<Rule>> {
+/// Convert the YAML into firewall rules. Returns the rule and the correct interface.
+pub fn parse_yaml(yaml: String) -> anyhow::Result<(Vec<Rule>, String)> {
     let parsed: serde_yaml::Value = serde_yaml::from_str(&yaml)?;
     let rules: Vec<YamlRule> = serde_yaml::from_value(parsed["rules"].clone())?;
 
@@ -15,7 +15,13 @@ pub fn parse_yaml(yaml: String) -> anyhow::Result<Vec<Rule>> {
         .map(|(id, yaml_rule)| convert_to_rule(yaml_rule, id as u32))
         .collect::<Result<Vec<Rule>, anyhow::Error>>()?;
 
-    Ok(parsed_rules)
+    Ok((
+        parsed_rules,
+        parsed["interface"]
+            .as_str()
+            .ok_or(anyhow::anyhow!("interface not provided"))?
+            .to_string(),
+    ))
 }
 
 /// Convert a YAML rule into a firewall rule.

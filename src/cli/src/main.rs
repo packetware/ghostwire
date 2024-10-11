@@ -15,9 +15,6 @@ fn main() {
         .about("Ghostwire is a stateful XDP firewall")
         .subcommands([
             Command::new("status").about("Gets the current status of the firewall"),
-            Command::new("enable")
-                .about("Enable the firewall")
-                .args([Arg::new("interface").required(true)]),
             Command::new("disable").about("Disable the firewall"),
             Command::new("load")
                 .about("Load the firewall rules from a configuration file")

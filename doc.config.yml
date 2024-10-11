@@ -3,12 +3,14 @@
 # The interface to run the XDP on
 interface: "eth0"
 # Whether the firewall is persistent across reboots.
-persistent: true
+# Not currently implemented.
+# persistent: true
 
 # Whether the Prometheus exporter is enabled.
-prometheus: true
+# Not currently implemented. Prometheus always listens on :4343.
+# prometheus: true
 # The local port Prometheus should listen on.
-prometheus_port: 4242
+# prometheus_port: 4242
 
 # The firewall rules you'd like to define.
 # The firewall drops traffic like TCP and UDP by default, rules whitelist traffic
@@ -26,7 +28,7 @@ rules:
     protocol: "TCP"
     # The port to allow the traffic to. Only applicable to TCP and UDP.
     # Omit or enter 0 to allow any port.
-    port: 22
+    port: 443 
     # Limit the amount of packets sent to this service per source IP. Runs over 10 seconds.
     # Enter to zero to disable ratelimiting.
     ratelimit: 1

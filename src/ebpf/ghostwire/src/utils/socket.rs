@@ -90,9 +90,14 @@ async fn handle_server_request_fallible(message: ClientMessage) -> anyhow::Resul
     match message.req_type {
         ClientReqType::STATUS => handle_status_request().await,
         ClientReqType::RULES => {
-            handle_rules_put(message.rules.ok_or(anyhow::anyhow!(
-                "request to change rules didn't include rules"
-            ))?)
+            handle_load(
+                message.rules.ok_or(anyhow::anyhow!(
+                    "request to change rules didn't include rules"
+                ))?,
+                message.interface.ok_or(anyhow::anyhow!(
+                    "request to change rules didn't include the interface"
+                ))?,
+            )
             .await
         }
         ClientReqType::ENABLE => {
@@ -117,12 +122,19 @@ async fn handle_status_request() -> anyhow::Result<ServerMessage> {
 
 /// Handle the modification of rules. The client will send the full list of rules, to which we will
 /// replace the map.
-async fn handle_rules_put(rules: Vec<Rule>) -> anyhow::Result<ServerMessage> {
-    let overall_status = OVERALL_STATE.read().await;
+async fn handle_load(rules: Vec<Rule>, interface: String) -> anyhow::Result<ServerMessage> {
+    // Find if the firewall is enabled.
+    let mut enabled = false;
 
-    if !overall_status.enabled {
-        anyhow::bail!("Firewall is disabled");
+    {
+        enabled = OVERALL_STATE.read().await.enabled;
     }
+
+    if !enabled {
+        handle_enable(interface).await?;
+    }
+
+    let overall_status = OVERALL_STATE.read().await;
 
     match &overall_status.state {
         Some(state) => {

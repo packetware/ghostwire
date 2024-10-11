@@ -128,9 +128,8 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                         }
                     };
 
-                    // if we've exceeded the ratelimiting, drop the packet
+                    // If we've exceeded the ratelimiting, drop the packet, and record the action
                     if rule.ratelimiting as u64 >= current_value {
-                        // update the metric for this rule
                         match RULE_ANALYTICS.get_ptr_mut(&rule.id) {
                             Some(analytics) => {
                                 (*analytics).passed += 1;

@@ -20,6 +20,7 @@ pub fn handle_arguments(matches: ArgMatches) -> Result<()> {
             interface: None,
             rules: None,
         }),
+        /* Currently disabled due to lack of implementation for persistence.
         Some(("enable", enable_matches)) => {
             let interface = enable_matches
                 .get_one::<String>("interface")
@@ -29,7 +30,7 @@ pub fn handle_arguments(matches: ArgMatches) -> Result<()> {
                 interface: Some(interface.to_string()),
                 rules: None,
             })
-        }
+        }*/
         Some(("disable", _)) => send_message(ClientMessage {
             req_type: ClientReqType::DISABLE,
             interface: None,
@@ -39,11 +40,11 @@ pub fn handle_arguments(matches: ArgMatches) -> Result<()> {
             let file = file_matches
                 .get_one::<String>("file")
                 .context("No file provided")?;
-            let rules = parse_yaml(fs::read_to_string(file)?)?;
+            let (rules, interface) = parse_yaml(fs::read_to_string(file)?)?;
 
             send_message(ClientMessage {
                 req_type: ClientReqType::RULES,
-                interface: None,
+                interface: Some(interface),
                 rules: Some(rules),
             })
         }
