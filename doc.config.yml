@@ -11,7 +11,7 @@ prometheus: true
 prometheus_port: 4242
 
 # The firewall rules you'd like to define.
-# The firewall is default drop, so when traffic meets one of these conditions it will be allowed.
+# The firewall drops traffic like TCP and UDP by default, rules whitelist traffic
 rules:
   # Define each rule individually
   - rule:
