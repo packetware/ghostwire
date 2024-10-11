@@ -26,7 +26,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: switch to nightly
-        run: rustup default nightly
+        run: |
+          rustup default nightly
+          rustup component add rustfmt --toolchain nightly
+          rustup component add clippy --toolchain nightly
+          rustup component add rust-src --toolchain nightly
 
       - uses: taiki-e/install-action@v2
         with:
