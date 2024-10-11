@@ -73,7 +73,6 @@ fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
     let start_ip = u32::from(ip) & mask;
     let end_ip = start_ip | !mask;
 
-    println!("Start: {:?}, End: {:?}", start_ip, end_ip);
 
     Ok((start_ip.to_be(), end_ip.to_be()))
 }
