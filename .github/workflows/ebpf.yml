@@ -1,6 +1,8 @@
 # Inspired by aya-template
 # @see https://github.com/aya-rs/aya-template/blob/main/.github/workflows/ci.yml
 
+name: ebpf
+
 on:
   push:
     branches:
@@ -42,11 +44,11 @@ jobs:
 
       - name: cargo xtask build
         working-directory: src/ebpf
-        run: cargo run --package xtask -- build
+        run: cargo run --locked --package xtask -- build
 
       - name: cargo xtask clippy
         working-directory: src/ebpf
-        run: cargo run --package xtask -- clippy
+        run: cargo run --locked --package xtask -- clippy
 
   socket-server:
     runs-on: ubuntu-22.04
@@ -67,13 +69,13 @@ jobs:
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/utils/*
           git diff --exit-code
 
-      - name: cargo xtask build
+      - name: cargo build
         working-directory: src/ebpf/ghostwire
-        run: cargo build
+        run: cargo build --locked
 
-      - name: cargo xtask clippy
+      - name: cargo clippy
         working-directory: src/ebpf/ghostwire
-        run: cargo clippy
+        run: cargo clippy --locked
 
   common:
     runs-on: ubuntu-22.04
