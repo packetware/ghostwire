@@ -40,6 +40,9 @@ jobs:
         run: |
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/main.rs
           rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/main.rs
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/utils/*
+          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-common/src/*
           git diff --exit-code
 
       - name: cargo xtask build
@@ -50,54 +53,18 @@ jobs:
         working-directory: src/ebpf
         run: cargo run --package xtask -- clippy
 
-  socket-server:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: switch to nightly
-        run: |
-          rustup default nightly
-          rustup component add rustfmt --toolchain nightly
-          rustup component add clippy --toolchain nightly
-          rustup component add rust-src --toolchain nightly
-
-      - name: rustfmt
-        run: |
-          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/main.rs
-          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire/src/utils/*
-          git diff --exit-code
-
-      - name: cargo build
+      - name: cargo socket server build
         working-directory: src/ebpf/ghostwire
         run: cargo build
 
-      - name: cargo clippy
+      - name: cargo socket server clippy
         working-directory: src/ebpf/ghostwire
         run: cargo clippy
 
-  common:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: switch to nightly
-        run: |
-          rustup default nightly
-          rustup component add rustfmt --toolchain nightly
-          rustup component add clippy --toolchain nightly
-          rustup component add rust-src --toolchain nightly
-
-      - name: rustfmt
-        run: |
-          rustfmt --config-path rustfmt.toml --edition 2021 src/ebpf/ghostwire-common/src/*
-          git diff --exit-code
-      - name: cargo build
+      - name: cargo common build
         working-directory: src/ebpf/ghostwire-common
         run: cargo build
 
-      - name: cargo clippy
+      - name: cargo common clippy
         working-directory: src/ebpf/ghostwire-common
         run: cargo clippy

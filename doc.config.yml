@@ -19,7 +19,7 @@ rules:
   - rule:
     # The source IP range this rule will apply to. For example, 23.133.104.69/32, or 23.133.104.0/24.
     # To allow traffic from any IP, use 0.0.0.0/0
-    source_ip_range: 0.0.0.0/0 
+    source_ip_range: 0.0.0.0/0
     # The destination IP range this rule will apply to.
     # To allow traffic to go to any IP assigned with this server, use 0.0.0.0/0.
     destination_ip_range: 0.0.0.0/0
@@ -28,7 +28,7 @@ rules:
     protocol: "TCP"
     # The port to allow the traffic to. Only applicable to TCP and UDP.
     # Omit or enter 0 to allow any port.
-    port: 443 
-    # Limit the amount of packets sent to this service per source IP. Runs over 10 seconds.
+    port: 22
+    # Limit the amount of packets sent to this service per source IP. Runs over 1 minute.
     # Enter to zero to disable ratelimiting.
     ratelimit: 1

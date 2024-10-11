@@ -34,7 +34,7 @@ use crate::handlers::{
 };
 
 #[map]
-/// The map which holds the firewall rules. Key is the index.
+/// The map which holds the firewall rules. Key is the index. Arrays in eBPF are immutable, so we're using a HashMap as a pseudo array 
 pub static RULES: HashMap<u32, Rule> = HashMap::<u32, Rule>::with_max_entries(100, 0);
 
 #[map]
