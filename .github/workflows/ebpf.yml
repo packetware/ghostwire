@@ -1,4 +1,4 @@
-# From aya-template
+# Inspired by aya-template
 # @see https://github.com/aya-rs/aya-template/blob/main/.github/workflows/ci.yml
 
 name: CI
@@ -25,13 +25,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: change directory to ebpf
-        run: cd src/ebpf
-
       - uses: taiki-e/install-action@v2
         with:
           tool: bpf-linker
 
+      - name: rustfmt
+        run: |
+          rustfmt --edition 2021 src/ebpf/ghostwire-ebpf/src/utils/*
+          rustfmt --edition 2021 src/ebpf/ghostwire-ebpf/src/main.rs
+          git diff --exit-code
+
       - name: cargo xtask build
         working-directory: src/ebpf
-        run: cargo xtask build
+        run: cargo run --package xtask -- build
+
+      - name: cargo xtask clippy
+        working-directory: src/ebpf
+        run: cargo run --package xtask -- clippy
