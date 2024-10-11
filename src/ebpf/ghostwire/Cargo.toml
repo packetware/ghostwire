@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 aya = "0.12"
-aya-log = "0.2"
+aya-log = "0.2.0"
 clap = { version = "4.1", features = ["derive"] }
 ghostwire-common = { path = "../ghostwire-common", features = ["user"] }
 anyhow = "1"
