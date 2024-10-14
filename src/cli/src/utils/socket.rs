@@ -13,7 +13,8 @@ use std::{
 /// Send a message to the firewall, erroring if unsuccessful
 pub fn send_message(client_message: ClientMessage) -> anyhow::Result<String> {
     // Connect to the socket.
-    let mut stream = UnixStream::connect("/tmp/ghostwire.sock")?;
+    let mut stream = UnixStream::connect("/tmp/ghostwire.sock")
+        .map_err(|_| anyhow::anyhow!("couldn't connect to the ghostwire server, is it online?"))?;
 
     // Serialize the client message.
     let serialized = serde_json::to_string(&client_message)?;

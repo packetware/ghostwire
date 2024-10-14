@@ -170,16 +170,20 @@ async fn handle_load(rules: Vec<Rule>, interface: String) -> anyhow::Result<Serv
 /// Handle the enabling of the firewall.
 async fn handle_enable(interface: String) -> anyhow::Result<ServerMessage> {
     {
-        let mut overall_status = OVERALL_STATE.write().await;
+        let overall_status = OVERALL_STATE.read().await;
 
         if overall_status.enabled || overall_status.state.is_some() {
             anyhow::bail!("Firewall is already enabled");
         }
-
-        overall_status.enabled = true;
     }
 
     load_ebpf(vec![], interface).await?;
+
+    {
+        let mut overall_status = OVERALL_STATE.write().await;
+
+        overall_status.enabled = true;
+    }
 
     Ok(ServerMessage {
         request_success: true,
@@ -190,16 +194,20 @@ async fn handle_enable(interface: String) -> anyhow::Result<ServerMessage> {
 /// Handle the disabling of the firewall.
 async fn handle_disable() -> anyhow::Result<ServerMessage> {
     {
-        let mut overall_status = OVERALL_STATE.write().await;
+        let overall_status = OVERALL_STATE.read().await;
 
         if !overall_status.enabled || overall_status.state.is_none() {
             anyhow::bail!("Firewall is already disabled");
         }
-
-        overall_status.enabled = false;
     }
 
     unload_ebpf().await;
+
+    {
+        let mut overall_status = OVERALL_STATE.write().await;
+
+        overall_status.enabled = false;
+    }
 
     Ok(ServerMessage {
         request_success: true,

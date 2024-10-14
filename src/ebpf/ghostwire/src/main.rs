@@ -1,5 +1,6 @@
 use crate::utils::prometheus::handle_prom_listener;
 use lazy_static::lazy_static;
+use std::process::exit;
 use tokio::{
     signal,
     sync::RwLock,
@@ -34,10 +35,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt::Subscriber::builder()
         .pretty()
         .with_max_level(tracing::Level::TRACE)
-        .finish();
-
-    // Start the Aya logger.
-    env_logger::init();
+        .init();
 
     // TODO: read the previous state on startup (@see utils/bootloader.rs)
 
@@ -63,6 +61,9 @@ async fn main() -> Result<(), anyhow::Error> {
     signal::ctrl_c().await?;
 
     tracing::info!("Exiting...");
+
+    // Emperically, the process doesn't close when `main` returns Ok(()), so we exit manually.
+    exit(0);
 
     Ok(())
 }
