@@ -76,7 +76,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
             ((*udp_header).source, (*udp_header).dest)
         }
         Icmp => (0, 0),
-        /// Currently, we don't support any other protocols
+        // Currently, we don't support any other protocols
         _ => return Ok(XDP_PASS),
     };
 
@@ -92,11 +92,11 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
     }
 
     if let Some(rule) = RULES.get(&Key {
-        /// 32 bit source IP + 32 bit destination IP + 8 bit protocol + 16 bit port number
+        // 32 bit source IP + 32 bit destination IP + 8 bit protocol + 16 bit port number
         prefix_len: 88,
         data: RuleKey {
-            source_ip,
-            destination_ip,
+            source_ip_range: source_ip,
+            destination_ip_range: destination_ip,
             protocol: protocol as u8,
             port_number: destination_port,
         },
@@ -120,7 +120,7 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
         }
 
         // Determine if we should perform ratelimiting.
-        if rule.ratelimiting != 0 {
+        if rule.ratelimit != 0 {
             // Create a ratelimit key. This is a combination of the source IP and the rule ID.
             let key = (source_ip + rule.id) as u64;
             // Fetch and increment ratelimit value for this key.
@@ -130,19 +130,19 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
                     *value
                 }
                 None => {
-                    RATELIMITING.insert(&key, &1, 0);
+                    let _ = RATELIMITING.insert(&key, &1, 0);
                     0
                 }
             };
 
             // If we've exceeded the ratelimiting, drop the packet, and record the action
-            if rule.ratelimiting as u64 <= current_value {
+            if rule.ratelimit as u64 <= current_value {
                 // The source has exceeded the ratelimit, drop the packet.
                 return Ok(XDP_DROP);
             }
         }
 
-        /// The packet has passed all checks, increment the rule's analytics.
+        // The packet has passed all checks, increment the rule's analytics.
         match RULE_ANALYTICS.get_ptr_mut(&rule.id) {
             Some(analytics) => {
                 (*analytics).passed += 1;
@@ -165,5 +165,5 @@ pub unsafe fn ghostwire_ingress_fallible(ctx: XdpContext) -> Result<u32, u32> {
     }
 
     // The packet isn't holepunched or whitelisted, drop it.
-    return Ok(XDP_DROP);
+    Ok(XDP_DROP)
 }

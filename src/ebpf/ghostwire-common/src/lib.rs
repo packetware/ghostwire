@@ -1,6 +1,7 @@
 #![no_std]
 
 #[repr(C)]
+#[derive(Debug, Clone, Copy)]
 /// The LPM trie key for a rule
 pub struct RuleKey {
     /// The source IP address in big endian
@@ -17,6 +18,7 @@ pub struct RuleKey {
 unsafe impl aya::Pod for RuleKey {}
 
 #[repr(C)]
+#[derive(Debug, Clone, Copy)]
 /// The LPM trie value for a rule
 pub struct RuleValue {
     /// The ID of the rule this value is associated with. We use this for analytics.

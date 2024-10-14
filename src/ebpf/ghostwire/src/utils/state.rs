@@ -6,7 +6,8 @@ use aya::{
     Bpf,
 };
 use ghostwire_common::{
-    Rule,
+    RuleKey,
+    RuleValue,
     RuleAnalytics,
 };
 use prometheus::{
@@ -15,6 +16,7 @@ use prometheus::{
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use aya::maps::lpm_trie::LpmTrie;
 
 /// The overall state of the firewall, to be exposed to the CLI
 pub struct OverallState {
@@ -32,7 +34,7 @@ pub struct State {
     /// The interface to apply the XDP hook to
     pub interface: String,
     /// The applied rules
-    pub rule_map: RwLock<HashMap<MapData, u32, Rule>>,
+    pub rule_map: RwLock<LpmTrie<MapData, RuleKey, RuleValue>>,
     /// The rule metrics
     pub rule_analytic_map: HashMap<MapData, u32, RuleAnalytics>,
     /// The ratelimit metrics

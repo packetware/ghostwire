@@ -25,7 +25,7 @@ use ghostwire_common::{
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::Result<()> {
+pub async fn load_ebpf(initial_rules: Vec<(Key<RuleKey>, RuleValue)>, interface: String) -> anyhow::Result<()> {
     match load_ebpf_fallible(initial_rules.clone(), interface.clone(), false).await {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -47,7 +47,7 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
 
 /// Load the eBPF program, fetching the maps and creating state from partial arguments
 async fn load_ebpf_fallible(
-    initial_rules: Vec<Rule>,
+    initial_rules: Vec<(Key<RuleKey>, RuleValue)>,
     interface: String,
     skb: bool,
 ) -> anyhow::Result<()> {
@@ -97,7 +97,7 @@ async fn load_ebpf_fallible(
     let mut rule_map: LpmTrie<_, RuleKey, RuleValue> = LpmTrie::try_from(bpf.take_map("RULES").unwrap())?;
 
     for rule in initial_rules.iter() {
-        rule_map.insert(i as u32, rule, 0)?;
+        rule_map.insert(&rule.0, rule.1, 0)?;
     }
 
     let rule_ratelimit_map: HashMap<_, u64, u64> =

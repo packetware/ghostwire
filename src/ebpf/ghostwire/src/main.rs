@@ -64,6 +64,4 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Emperically, the process doesn't close when `main` returns Ok(()), so we exit manually.
     exit(0);
-
-    Ok(())
 }
