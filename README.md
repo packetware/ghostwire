@@ -1,11 +1,12 @@
 # Ghostwire
 An (experimental) stateful XDP firewall for Linux.
 
-We built this and use it internally at [Packetware](https://packetware.net), a global content delivery network, to protect our infrastructure.
-We found performance with IPtables is abysmal for systems where performance is must, and somewhat uninitive to manage persistence for.
+We built this to use it internally at [Packetware](https://packetware.net), a global content delivery network, to protect our infrastructure.
+We found performance with IPtables is a joke for systems where performance is must, and unintuitive to manage persistence for.
 
-For stateless "stupid" filtering, Ghostwire is approximately 5.5x more capable than IPtables's fastest PREROUTING table.
-It's controlled through simple YAML configuration files.
+For stateless "stupid" filtering, Ghostwire is approximately 5.5x more capable (in handled packets per second) than IPtables's fastest PREROUTING table.
+For stateful filtering, Ghostwire destroys IPtables' conntrack (our initial benchmarks show at least 9.5x more packets per second).
+It's controlled through simple YAML configuration files, no BS.
 
 Some features are:
 - Stateful holepunch-based filtering
@@ -19,8 +20,10 @@ We'd like to add:
 - More complex rate limiting
 - Installation support for more systems
 
+This is currently in Alpha state, I wouldn't recommend using it in production just yet.
+
 ## Installation
-Ghostwire is used extensively on Ubuntu 24.04 LTS internally, but this installation script should work on any systemd-based system.
+Ghostwire is tested on Ubuntu 24.04 LTS internally, but this installation script should work on any systemd-based system.
 
 ```bash
 curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/scripts/install.sh | sudo bash
@@ -47,6 +50,7 @@ gw disable
 Ghostwire is configured through YAML files. Here's an example configuration file:
 
 ```yaml
+interface: "eth0"
 # The firewall rules you'd like to define.
 # The firewall drops traffic like TCP and UDP by default, rules whitelist traffic
 rules:
