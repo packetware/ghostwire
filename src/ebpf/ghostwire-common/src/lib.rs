@@ -2,30 +2,33 @@
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-/// A firewall rule in C format
-pub struct Rule {
-    /// The ID of this rule with what the API identifies it as. This will also be the key of the
-    /// ratelimiting map if ratelimiting is enabled for this rule.
-    pub id: u32,
-    /// The start source IP address in big endian
-    pub source_start_ip: u32,
-    /// The end source IP address in big endian
-    pub source_end_ip: u32,
-    /// The start destination IP address in big endian. If this rule applies everywhere, all bytes
-    /// will show 0
-    pub destination_start_ip: u32,
-    /// The end destination IP address in big endian. If this rule applies everywhere, all bytes
-    /// will show 0
-    pub destination_end_ip: u32,
-    /// Protocol number (currently limited to either 1, 6, 17 for ICMP, TCP, and UDP respectively.
-    /// if this rule applies to all protocols, this will be zero)
-    pub protocol_number: u8,
-    /// The port if TCP or UDP (if not, 0)
+/// The LPM trie key for a rule
+pub struct RuleKey {
+    /// The source IP address in big endian
+    pub source_ip_range: u32,
+    /// The destination IP address in big endian
+    pub destination_ip_range: u32,
+    /// The protocol number in big endian
+    pub protocol: u8,
+    /// The port number in big endian
     pub port_number: u16,
-    /// If the rule is a ratelimiting one, represent the amount of traffic allowed per IP over 10
-    /// seconds. If there's no ratelimiting rule, this is 0.
-    pub ratelimiting: u32,
 }
+
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for RuleKey {}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+/// The LPM trie value for a rule
+pub struct RuleValue {
+    /// The ID of the rule this value is associated with. We use this for analytics.
+    pub id: u32,
+    /// The ratelimiting value for this rule per minute. If this is 0, there is no ratelimiting.
+    pub ratelimit: u32,
+}
+
+#[cfg(feature = "user")]
+unsafe impl aya::Pod for RuleValue {}
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -39,7 +42,5 @@ pub struct RuleAnalytics {
     pub passed: u128,
 }
 
-#[cfg(feature = "user")]
-unsafe impl aya::Pod for Rule {}
 #[cfg(feature = "user")]
 unsafe impl aya::Pod for RuleAnalytics {}

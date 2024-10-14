@@ -13,6 +13,7 @@ use aya_ebpf::{
     },
     maps::{
         HashMap,
+        LpmTrie,
         LruHashMap,
     },
     programs::{
@@ -21,8 +22,9 @@ use aya_ebpf::{
     },
 };
 use ghostwire_common::{
-    Rule,
     RuleAnalytics,
+    RuleKey,
+    RuleValue,
 };
 
 mod handlers;
@@ -34,8 +36,9 @@ use crate::handlers::{
 };
 
 #[map]
-/// The map which holds the firewall rules. Key is the index. Arrays in eBPF are immutable, so we're using a HashMap as a pseudo array
-pub static RULES: HashMap<u32, Rule> = HashMap::<u32, Rule>::with_max_entries(100, 0);
+/// The map that holds the firewall rules.
+pub static RULES: LpmTrie<RuleKey, RuleValue> =
+    LpmTrie::<RuleKey, RuleValue>::with_max_entries(100, 0);
 
 #[map]
 /// The map which holds the ratelimiting metrics for ratelimiting-based rules. Key is a combination

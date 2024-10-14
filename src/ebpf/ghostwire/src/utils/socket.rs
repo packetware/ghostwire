@@ -3,6 +3,10 @@ use super::ebpf::{
     unload_ebpf,
 };
 use crate::OVERALL_STATE;
+use ghostwire_common::{
+    RuleKey,
+    RuleValue,
+};
 use ghostwire_types::{
     ClientMessage,
     ClientReqType,
@@ -19,6 +23,10 @@ use std::{
         UnixStream,
     },
 };
+use aya::maps::lpm_trie::{LpmTrie, Key};
+use aya::Pod;
+use aya::maps::MapData;
+use std::borrow::Borrow;
 
 /// Listen on the socket for client requests from the CLI
 pub async fn socket_server() -> anyhow::Result<()> {
@@ -125,7 +133,7 @@ async fn handle_status_request() -> anyhow::Result<ServerMessage> {
 /// replace the map.
 async fn handle_load(rules: Vec<Rule>, interface: String) -> anyhow::Result<ServerMessage> {
     // Find if the firewall is enabled.
-    let mut enabled = false;
+    let enabled;
 
     {
         enabled = OVERALL_STATE.read().await.enabled;
@@ -139,21 +147,19 @@ async fn handle_load(rules: Vec<Rule>, interface: String) -> anyhow::Result<Serv
 
     match &overall_status.state {
         Some(state) => {
-            // eBPF maps are super limited in what they can do in comparison to a HashMap from the standard
-            // library, so instead of being able to clear the map,
-            // we'll have to sauce it up
             let mut map = state.rule_map.write().await;
 
-            let map_len = map.iter().collect::<Vec<_>>().len();
+            let keys = collect_lpm_trie_keys(&map)?; 
 
-            // we use index as key
-            for i in 0..map_len {
-                map.remove(&(i as u32))?;
+            // Currently, a rule update is a full replacement.
+            for key in keys.iter() {
+                map.remove(key)?;
             }
 
-            // insert the new rules
+            // Insert the new rules.
             for (i, rule) in rules.iter().enumerate() {
-                map.insert(i as u32, convert_rule(*rule), 0)?;
+                let (key, value) = convert_rule(*rule, i as u32);
+                map.insert(&key, value, 0)?;
             }
 
             Ok(ServerMessage {
@@ -215,16 +221,40 @@ async fn handle_disable() -> anyhow::Result<ServerMessage> {
     })
 }
 
-/// Convert a rule from the common format to the eBPF format for insertion into the map.
-fn convert_rule(rule: Rule) -> ghostwire_common::Rule {
-    ghostwire_common::Rule {
-        id: rule.id,
-        source_start_ip: rule.source_start_ip,
-        source_end_ip: rule.source_end_ip,
-        destination_start_ip: rule.destination_start_ip,
-        destination_end_ip: rule.destination_end_ip,
-        protocol_number: rule.protocol_number,
-        port_number: rule.port_number,
-        ratelimiting: rule.ratelimiting,
+/// Convert a rule from the common format to
+fn convert_rule(rule: Rule, id: u32) -> (Key<RuleKey>, RuleValue) {
+    (
+        Key::new(
+            rule.prefix_length,
+            RuleKey {
+                source_ip_range: rule.source_ip_range,
+                destination_ip_range: rule.destination_ip_range,
+                protocol: rule.protocol_number,
+                port_number: rule.port_number,
+            },
+        ),
+        RuleValue {
+            id,
+            ratelimit: rule.ratelimit.unwrap_or(0),
+        }
+    )
+}
+
+/// Collect all keys from an LpmTrie
+fn collect_lpm_trie_keys<T, K, V>(trie: &LpmTrie<T, K, V>) -> anyhow::Result<Vec<Key<K>>>
+where
+    K: Clone + Pod,
+    T: Borrow<MapData>,
+    V: Pod,
+{
+    let mut collected_keys = Vec::new();
+
+    for key_result in trie.keys() {
+        match key_result {
+            Ok(key) => collected_keys.push(key.clone()),            
+            Err(e) => return Err(e.into()),        
+        }
     }
+
+    Ok(collected_keys) // Return collected keys if no error occurs
 }

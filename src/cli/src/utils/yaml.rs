@@ -1,5 +1,5 @@
-use anyhow::Context;
 /// This file is dedicated to the YAML chief Dobri.
+use anyhow::Context;
 use ghostwire_types::Rule;
 use serde::Deserialize;
 use std::net::Ipv4Addr;
@@ -26,26 +26,44 @@ pub fn parse_yaml(yaml: String) -> anyhow::Result<(Vec<Rule>, String)> {
 
 /// Convert a YAML rule into a firewall rule.
 fn convert_to_rule(yaml_rule: YamlRule, id: u32) -> anyhow::Result<Rule> {
-    let (source_start_ip, source_end_ip) = parse_ip_range(&yaml_rule.source_ip_range)?;
-    let (destination_start_ip, destination_end_ip) =
-        parse_ip_range(&yaml_rule.destination_ip_range)?;
+    // The total length we'll LPM on.
+    let mut prefix_length = 0;
+    let (source_ip_range, added_length) = parse_ip_range(&yaml_rule.source_ip_range)?;
+    prefix_length += added_length;
+    let (destination_ip_range, added_length) = parse_ip_range(&yaml_rule.destination_ip_range)?;
+    prefix_length += added_length;
 
-    let protocol_number = match yaml_rule.protocol.to_lowercase().as_str() {
-        "icmp" => 1,
-        "tcp" => 6,
-        "udp" => 17,
-        _ => anyhow::bail!("Invalid protocol"),
-    };
+    let mut protocol: Option<u8> = None;
+
+    if let Some(protocol_number) = yaml_rule.protocol {
+        protocol = Some(match protocol_number.to_lowercase().as_str() {
+            "icmp" => 1,
+            "tcp" => 6,
+            "udp" => 17,
+            _ => anyhow::bail!("Invalid protocol"),
+        });
+
+        // We're matching against the 8-bit protocol number.
+        prefix_length += 8;
+    }
+
+    if yaml_rule.port.is_some() {
+        if protocol.is_none() {
+            anyhow::bail!("Port provided without protocol");
+        }
+
+        // We're matching against the 16-bit port number.
+        prefix_length += 16;
+    }
 
     Ok(Rule {
         id,
-        source_start_ip,
-        source_end_ip,
-        destination_start_ip,
-        destination_end_ip,
-        protocol_number: u8::to_be(protocol_number),
-        port_number: u16::to_be(yaml_rule.port),
-        ratelimiting: yaml_rule.ratelimit,
+        prefix_length,
+        source_ip_range,
+        destination_ip_range,
+        protocol_number: u8::to_be(protocol.unwrap_or(0)),
+        port_number: u16::to_be(yaml_rule.port.unwrap_or(0)),
+        ratelimit: yaml_rule.ratelimit,
     })
 }
 
@@ -54,15 +72,15 @@ fn convert_to_rule(yaml_rule: YamlRule, id: u32) -> anyhow::Result<Rule> {
 struct YamlRule {
     source_ip_range: String,
     destination_ip_range: String,
-    protocol: String,
-    port: u16,
-    ratelimit: u32,
+    protocol: Option<String>,
+    port: Option<u16>,
+    ratelimit: Option<u32>,
 }
 
-/// Parse an IP range in CIDR notation to two big endian numbers: the start and end of the range.
+/// Parse an IP range in CIDR notation to the range and the prefix length.
 fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
     if ip_range == "0.0.0.0/0" {
-        return Ok((0, u32::MAX));
+        return Ok((0, 0));
     }
 
     // Break up the subnet from the IP.
@@ -76,9 +94,7 @@ fn parse_ip_range(ip_range: &str) -> anyhow::Result<(u32, u32)> {
         32
     };
     let mask = !((1u32 << (32 - prefix_length)) - 1);
-
     let start_ip = u32::from(ip) & mask;
-    let end_ip = start_ip | !mask;
 
-    Ok((start_ip.to_be(), end_ip.to_be()))
+    Ok((start_ip.to_be(), prefix_length as u32))
 }
