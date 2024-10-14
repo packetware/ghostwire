@@ -1,2 +1,6 @@
-[alias]
-xtask = "run --package xtask --"
+[build]
+target-dir = "../target"
+target = "bpfel-unknown-none"
+
+[unstable]
+build-std = ["core"]
