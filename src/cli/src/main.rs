@@ -2,7 +2,10 @@ use clap::{
     Arg,
     Command,
 };
-use utils::handler::handle_arguments;
+use utils::{
+    console::print_error,
+    handler::handle_arguments,
+};
 
 mod utils;
 
@@ -20,7 +23,10 @@ fn main() {
                 .about("Load the firewall rules from a configuration file")
                 .args([Arg::new("file").required(true)]),
         ])
+        .arg_required_else_help(true)
         .get_matches();
 
-    handle_arguments(matches).expect("failure using arguments");
+    if let Err(e) = handle_arguments(matches) {
+        print_error(&e.to_string());
+    }
 }
