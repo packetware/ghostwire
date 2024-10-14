@@ -30,7 +30,7 @@ Ghostwire is tested on Ubuntu 24.04 LTS internally, but this installation script
 >>>>>>> Stashed changes
 
 ```bash
-curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/install.sh | sudo bash
+curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/scripts/install.sh | sudo bash
 ```
 
 Then, add the rules you'd like.
