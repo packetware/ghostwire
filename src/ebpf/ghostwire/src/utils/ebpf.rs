@@ -29,7 +29,14 @@ pub async fn load_ebpf(initial_rules: Vec<Rule>, interface: String) -> anyhow::R
                 "failed to load eBPF with default flags, trying again in SKB: {}",
                 e
             );
-            load_ebpf_fallible(initial_rules, interface, true).await
+            load_ebpf_fallible(initial_rules, interface.clone(), true)
+                .await
+                .map_err(|_| {
+                    anyhow::anyhow!(
+                        "failed to load eBPF program. is {} the correct interface?",
+                        interface
+                    )
+                })
         }
     }
 }

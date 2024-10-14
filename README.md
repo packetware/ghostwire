@@ -23,11 +23,7 @@ We'd like to add:
 This is currently in Alpha state, I wouldn't recommend using it in production just yet.
 
 ## Installation
-<<<<<<< Updated upstream
-Ghostwire is used extensively on Ubuntu 22.04 LTS internally, but this installation script should work on any systemd-based system.
-=======
 Ghostwire is tested on Ubuntu 24.04 LTS internally, but this installation script should work on any systemd-based system.
->>>>>>> Stashed changes
 
 ```bash
 curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/scripts/install.sh | sudo bash

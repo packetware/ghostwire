@@ -1,11 +1,13 @@
-use super::yaml::parse_yaml;
+use super::{
+    console::print_success,
+    yaml::parse_yaml,
+};
 use crate::utils::socket::send_message;
 use anyhow::{
     Context,
     Result,
 };
 use clap::ArgMatches;
-use colored::*;
 use ghostwire_types::{
     ClientMessage,
     ClientReqType,
@@ -56,14 +58,4 @@ pub fn handle_arguments(matches: ArgMatches) -> Result<()> {
     print_success(&resp);
 
     Ok(())
-}
-
-/// Print a success message to the console.
-fn print_success(message: &str) {
-    println!(
-        "{} {} {}",
-        ">>>".bold().blue(),
-        message.bold().green(),
-        "<<<".bold().blue()
-    );
 }

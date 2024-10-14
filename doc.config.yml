@@ -31,4 +31,4 @@ rules:
     port: 22
     # Limit the amount of packets sent to this service per source IP. Runs over 1 minute.
     # Enter to zero to disable ratelimiting.
-    ratelimit: 1
+    ratelimit: 0
