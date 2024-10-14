@@ -45,24 +45,18 @@ pub struct Rule {
     /// The ID of this rule with what the API identifies it as. This will also be the key of the
     /// ratelimiting map if ratelimiting is enabled for this rule.
     pub id: u32,
-    /// The start source IP address in big endian
-    pub source_start_ip: u32,
-    /// The end source IP address in big endian
-    pub source_end_ip: u32,
-    /// The start destination IP address in big endian. If this rule applies everywhere, all bytes
-    /// will show 0
-    pub destination_start_ip: u32,
-    /// The end destination IP address in big endian. If this rule applies everywhere, all bytes
-    /// will show 0
-    pub destination_end_ip: u32,
-    /// Protocol number (currently limited to either 1, 6, 17 for ICMP, TCP, and UDP respectively.
-    /// if this rule applies to all protocols, this will be zero)
+    /// The specificity of the rule for the LPM trie
+    pub prefix_length: u32,
+    /// The source IP address / range in big endian
+    pub source_ip_range: u32,
+    /// The destination IP address / range in big endian
+    pub destination_ip_range: u32,
+    /// The protocol number in big endian
     pub protocol_number: u8,
-    /// The port if TCP or UDP (if not, 0)
+    /// The port number in big endian
     pub port_number: u16,
-    /// If the rule is a ratelimiting one, represent the amount of traffic allowed per IP over 10
-    /// seconds. If there's no ratelimiting rule, this is 0.
-    pub ratelimiting: u32,
+    /// If the rule is a ratelimiting one, represent the amount of traffic allowed per IP over a minute.
+    pub ratelimit: Option<u32>,
 }
 
 /// A network protocol. This is used in the Rule struct to determine what protocol the rule applies to.

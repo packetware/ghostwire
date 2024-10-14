@@ -3,6 +3,10 @@ use super::ebpf::{
     unload_ebpf,
 };
 use crate::OVERALL_STATE;
+use ghostwire_common::{
+    RuleKey,
+    RuleValue,
+};
 use ghostwire_types::{
     ClientMessage,
     ClientReqType,
@@ -19,6 +23,7 @@ use std::{
         UnixStream,
     },
 };
+use aya::maps::lpm_trie::Key;
 
 /// Listen on the socket for client requests from the CLI
 pub async fn socket_server() -> anyhow::Result<()> {
@@ -215,16 +220,20 @@ async fn handle_disable() -> anyhow::Result<ServerMessage> {
     })
 }
 
-/// Convert a rule from the common format to the eBPF format for insertion into the map.
-fn convert_rule(rule: Rule) -> ghostwire_common::Rule {
-    ghostwire_common::Rule {
-        id: rule.id,
-        source_start_ip: rule.source_start_ip,
-        source_end_ip: rule.source_end_ip,
-        destination_start_ip: rule.destination_start_ip,
-        destination_end_ip: rule.destination_end_ip,
-        protocol_number: rule.protocol_number,
-        port_number: rule.port_number,
-        ratelimiting: rule.ratelimiting,
-    }
+/// Convert a rule from the common format to
+fn convert_rule(rule: Rule, id: u32) -> (Key<RuleKey>, RuleValue) {
+    (
+        Key {
+            prefix_len: prefix_length,
+            data: RuleKey {
+                source_ip: rule.source_ip_range,
+                destination_ip_range: rule.destination_ip_range,
+                protocol: rule.protocol,
+                port_number: rule.port_number,
+            },
+        },
+        RuleValue {
+            action: rule.action,
+        }
+    )
 }

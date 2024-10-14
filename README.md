@@ -22,14 +22,45 @@ We'd like to add:
 
 This is currently in Alpha state, I wouldn't recommend using it in production just yet.
 
-## Installation
+## Getting Started
+
+### Configuration
+Ghostwire is configured through YAML files. Here's an example configuration file:
+
+```yaml
+# The interface to run the XDP on. We'll try to load with offloading first, then without in SKB mode.
+interface: "eth0"
+
+# Default behavior is drop-all, firewall rules explicitly allow traffic
+rules:
+  # Every component of this rule must match for the rule to apply.
+  - rule:
+    # The source IP range this rule will apply to. For example, 23.133.104.69/32, or 10.0.0.0/8.
+    # To allow traffic from any IP, use 0.0.0.0/0.
+    source_ip_range: 0.0.0.0/0
+    # The destination IP range this rule will apply to.
+    # To allow traffic to go to any IP, use 0.0.0.0/0.
+    destination_ip_range: 0.0.0.0/0
+    # The IP protocol to allow.
+    # Current allowed values are: TCP, UDP, ICMP, ALL.
+    # Leave empty to allow all protocols.
+    protocol: "TCP"
+    # The port to allow the traffic to. Only applicable to TCP and UDP.
+    # Leavy empty to allow any port.
+    port: 22
+    # Limit the amount of packets sent to this service per source IP. Runs over 1 minute.
+    # Omit to disable rate limiting.
+    ratelimit: 1000
+```
+
+### Installation
 Ghostwire is tested on Ubuntu 24.04 LTS internally, but this installation script should work on any systemd-based system.
 
 ```bash
 curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/scripts/install.sh | sudo bash
 ```
 
-Then, add the rules you'd like.
+Then, add the rules you'd like in a YAML file and start the firewall
 
 Start the firewall:
 ```bash
@@ -44,31 +75,4 @@ gw status
 Stop the firewall:
 ```bash
 gw disable
-```
-
-## Configuration
-Ghostwire is configured through YAML files. Here's an example configuration file:
-
-```yaml
-interface: "eth0"
-# The firewall rules you'd like to define.
-# The firewall drops traffic like TCP and UDP by default, rules whitelist traffic
-rules:
-  # Define each rule individually
-  - rule:
-    # The source IP range this rule will apply to. For example, 23.133.104.69/32, or 23.133.104.0/24.
-    # To allow traffic from any IP, use 0.0.0.0/0
-    source_ip_range: 0.0.0.0/0
-    # The destination IP range this rule will apply to.
-    # To allow traffic to go to any IP assigned with this server, use 0.0.0.0/0.
-    destination_ip_range: 0.0.0.0/0
-    # The IP protocol to allow.
-    # Current allowed values are: TCP, UDP, ICMP, ALL.
-    protocol: "TCP"
-    # The port to allow the traffic to. Only applicable to TCP and UDP.
-    # Omit or enter 0 to allow any port.
-    port: 22
-    # Limit the amount of packets sent to this service per source IP. Runs over 1 minute.
-    # Enter to zero to disable ratelimiting.
-    ratelimit: 100
 ```

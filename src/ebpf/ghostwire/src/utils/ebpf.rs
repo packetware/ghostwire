@@ -3,7 +3,10 @@ use crate::OVERALL_STATE;
 use anyhow::Context;
 use aya::{
     include_bytes_aligned,
-    maps::HashMap,
+    maps::{
+        HashMap,
+        lpm_trie::{LpmTrie, Key},
+    },
     programs::{
         tc,
         SchedClassifier,
@@ -15,7 +18,8 @@ use aya::{
 };
 use aya_log::BpfLogger;
 use ghostwire_common::{
-    Rule,
+    RuleKey,
+    RuleValue,
     RuleAnalytics,
 };
 use std::sync::Arc;
@@ -90,9 +94,9 @@ async fn load_ebpf_fallible(
     program.attach(&interface, TcAttachType::Egress)?;
 
     // Fetch the eBPF maps.
-    let mut rule_map: HashMap<_, u32, Rule> = HashMap::try_from(bpf.take_map("RULES").unwrap())?;
+    let mut rule_map: LpmTrie<_, RuleKey, RuleValue> = LpmTrie::try_from(bpf.take_map("RULES").unwrap())?;
 
-    for (i, rule) in initial_rules.iter().enumerate() {
+    for rule in initial_rules.iter() {
         rule_map.insert(i as u32, rule, 0)?;
     }
 

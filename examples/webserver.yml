@@ -1,0 +1,19 @@
+# The interface to run the XDP on. We'll try to load with offloading first, then without in SKB mode.
+interface: "eth0"
+
+rules:
+  - rule:
+    source_ip_range: 23.133.104.69/32 # Only allow SSH from this IP.
+    destination_ip_range: 0.0.0.0/0
+    protocol: "TCP"
+    port: 22
+  - rule:
+    source_ip_range: 0.0.0.0/0
+    destination_ip_range: 0.0.0.0/0
+    protocol: "TCP"
+    port: 80
+  - rule:
+    source_ip_range: 0.0.0.0/0
+    destination_ip_range: 0.0.0.0/0
+    protocol: "TCP"
+    port: 443
