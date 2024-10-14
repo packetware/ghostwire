@@ -20,10 +20,10 @@ We'd like to add:
 - Installation support for more systems
 
 ## Installation
-Ghostwire is used extensively on Ubuntu 22.04 LTS internally, but this installation script should work on any systemd-based system.
+Ghostwire is used extensively on Ubuntu 24.04 LTS internally, but this installation script should work on any systemd-based system.
 
 ```bash
-curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/install.sh | sudo bash
+curl -s https://raw.githubusercontent.com/packetware/ghostwire/main/scripts/install.sh | sudo bash
 ```
 
 Then, add the rules you'd like.
