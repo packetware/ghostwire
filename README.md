@@ -13,7 +13,7 @@ Some features are:
 - Rate limiting
 - Simple YAML syntax
 - UNIX socket API
-- Exports Prometheus metrics
+- Exports IPFIX to Clickhouse
 
 We'd like to add:
 - Block IP UNIX socket endpoint (much more performant ipset)
@@ -50,25 +50,38 @@ gw disable
 Ghostwire is configured through YAML files. Here's an example configuration file:
 
 ```yaml
-interface: "eth0"
-# The firewall rules you'd like to define.
-# The firewall drops traffic like TCP and UDP by default, rules whitelist traffic
+interface: "enp0s8"
+source: 
+  type: local # Can be "local" for using this YAML or "database" to fetch rules from a DB
+  database: # Only required if `type` is "database"
+    host: "db.example.com"
+    port: 5432
+    username: "firewall_user"
+    password: "securepassword"
+    database_name: "firewall_rules"
+default: block # Optional, sets the default action for unmatched rules
 rules:
-  # Define each rule individually
-  - rule:
-    # The source IP range this rule will apply to. For example, 23.133.104.69/32, or 23.133.104.0/24.
-    # To allow traffic from any IP, use 0.0.0.0/0
-    source_ip_range: 0.0.0.0/0
-    # The destination IP range this rule will apply to.
-    # To allow traffic to go to any IP assigned with this server, use 0.0.0.0/0.
-    destination_ip_range: 0.0.0.0/0
-    # The IP protocol to allow.
-    # Current allowed values are: TCP, UDP, ICMP, ALL.
-    protocol: "TCP"
-    # The port to allow the traffic to. Only applicable to TCP and UDP.
-    # Omit or enter 0 to allow any port.
-    port: 22
-    # Limit the amount of packets sent to this service per source IP. Runs over 1 minute.
-    # Enter to zero to disable ratelimiting.
-    ratelimit: 100
+  - action: allow # Optional, defaults to the `default_action`
+    sources: 
+      - 192.168.56.0/24 # Optional, defaults to 0.0.0.0/0
+    destinations: 
+      - 192.168.56.101/32 # Required
+    protocols:
+      - tcp
+      - udp # List of protocols
+    port_range: # Optional range, ports cant be specified if port_range is specified
+      start: 23
+      end: 40
+  - action: allow
+    destinations: 
+      - 192.168.56.101/32
+    protocols:
+      - tcp
+    ports:
+      - 2022
+  - action: allow
+    destinations: 
+      - 10.0.0.1/32
+    protocols:
+      - icmp # if the protocol is ICMP the ports should be just [0]
 ```
