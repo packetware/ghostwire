@@ -31,7 +31,7 @@ struct DatabaseConfig {
 pub struct Rule {
     action: Option<String>, // Optional: "allow" or "block"
     sources: Option<Vec<String>>, // List of CIDRs or IPs, defaults to 0.0.0.0/0
-    destinations: Vec<String>,    // Required: List of CIDRs or IPs
+    destinations: Option<Vec<String>>,    // Required: List of CIDRs or IPs
     protocols: Vec<String>,       // Required: List of protocols
     ports: Option<Vec<u16>>,      // Optional: List of specific ports
     port_range: Option<PortRange>, // Optional: Range of ports
@@ -64,9 +64,10 @@ pub fn expand_rule(rule: &Rule, default_action: &str) -> anyhow::Result<Vec<Expa
         Some(invalid) => panic!("Invalid action: {}", invalid), // Catch invalid actions
     };
 
-  let binding = Vec::<String>::new();
-  let source_cidrs = rule.sources.as_deref().unwrap_or(&binding);
-  let destination_cidrs = &rule.destinations;
+  let src_binding = Vec::<String>::new();
+  let source_cidrs = rule.sources.as_deref().unwrap_or(&src_binding);
+  let dst_binding = Vec::<String>::new();
+  let destination_cidrs = rule.destinations.as_deref().unwrap_or(&dst_binding);
   let protocols = rule.protocols.iter().map(|protocol| match protocol.to_uppercase().as_str() {
       "TCP" => 6,
       "UDP" => 17,
@@ -83,18 +84,24 @@ pub fn expand_rule(rule: &Rule, default_action: &str) -> anyhow::Result<Vec<Expa
   };
 
   let mut expanded_rules = Vec::new();
-  
-  for protocol in protocols {
+
     // If source_cidrs is empty, we insert 0.0.0.0
     let source_ips = if !source_cidrs.is_empty() {
         source_cidrs.iter().flat_map(|src_cidr| expand_cidr(src_cidr)).collect::<Vec<_>>()
     } else {
-      vec![IpAddr::V4("0.0.0.0".parse().unwrap())] // Add 0.0.0.0 if no source CIDR is present
+        vec![IpAddr::V4("0.0.0.0".parse().unwrap())] // Add 0.0.0.0 if no source CIDR is present
     };
 
-    for src_ip in source_ips {
-        for dst_cidr in destination_cidrs {
-            for dst_ip in expand_cidr(dst_cidr) {
+    // If destination_cidrs is empty, we insert 0.0.0.0
+    let destination_ips = if !destination_cidrs.is_empty() {
+        destination_cidrs.iter().flat_map(|dst_cidr| expand_cidr(dst_cidr)).collect::<Vec<_>>()
+    } else {
+        vec![IpAddr::V4("0.0.0.0".parse().unwrap())] // Add 0.0.0.0 if no destination CIDR is present
+    };
+  
+    for protocol in protocols {
+        for src_ip in &source_ips {
+            for dst_ip in &destination_ips {
                 if protocol == 1 { // Check if the protocol is ICMP
                     // Add a rule with port 0 for ICMP
                     expanded_rules.push(ExpandedRule {
@@ -118,7 +125,6 @@ pub fn expand_rule(rule: &Rule, default_action: &str) -> anyhow::Result<Vec<Expa
             }
         }
     }
-  }
   Ok(expanded_rules)
 }
 
