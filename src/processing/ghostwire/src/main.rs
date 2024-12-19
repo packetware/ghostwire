@@ -12,9 +12,9 @@ use tokio::signal;
 //use tokio::time::{interval, Duration};
 use serde_yaml::from_reader;
 
-use ghostwire_common::{FiveTuple, Punch};
+use ghostwire_common::{PASS, DROP, FiveTuple, Punch};
 
-use config::{Config, expand_rules};
+use config::{Config, expand_rule};
 
 mod config;
 
@@ -55,29 +55,29 @@ async fn main() -> Result<(), anyhow::Error> {
         // This can happen if you remove all log statements from your eBPF program.
         warn!("failed to initialize eBPF logger: {}", e);
     }
-    let program: &mut Xdp =
+    let ingress_program: &mut Xdp =
         bpf.program_mut("xdp_firewall").unwrap().try_into()?;
-    program.load()?;
-    program.attach(&iface, XdpFlags::default())
+    ingress_program.load()?;
+    ingress_program.attach(&iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
     
     // error adding clsact to the interface if it is already added is harmless
     // the full cleanup can be done with 'sudo tc qdisc del dev eth0 clsact'.
-    /*let _ = tc::qdisc_add_clsact(&iface);
+    let _ = tc::qdisc_add_clsact(&iface);
     let egress_program: &mut SchedClassifier =
         bpf.program_mut("tc_egress").unwrap().try_into()?;
     egress_program.load()?;
-    egress_program.attach(&iface, TcAttachType::Egress)?;*/
-    
+    egress_program.attach(&iface, TcAttachType::Egress)?;
+
     // 
     /*let mut blocklist: HashMap<_, u32, u32> =
-        HashMap::try_from(bpf.map_mut("BLOCKLIST").unwrap())?;
+        HashMap::try_from(bpf.map_mut("IPV4LIST").unwrap())?;
 
     // 
     let block_addr: u32 = Ipv4Addr::new(192, 168, 56, 1).into();
 
     // 
-    blocklist.insert(block_addr, 0, 0)?;*/
+    blocklist.insert(block_addr, DROP, 0)?;*/
 
     // Initialize the PUNCHES map
     let mut punches: HashMap<_, FiveTuple, Punch> =
@@ -95,8 +95,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // Define the corresponding Punch value
     let punch_value = Punch {
-        action: 0,
-        padding: [0; 7],    // Padding must be explicitly set
+        action: PASS,
+        padding: [0; 4],    // Padding must be explicitly set
         //expires: 0, // Set an expiration time (0 for no expiration)
     };
 
@@ -109,8 +109,8 @@ async fn main() -> Result<(), anyhow::Error> {
     //let default_action = config.default.as_deref().unwrap_or("block");
     for rule in &config.rules {
         let expanded_rules = match &config.default {
-            Some(default_action) => expand_rules(rule, default_action),
-            None => expand_rules(rule, "block"), // Provide a fallback
+            Some(default_action) => expand_rule(rule, default_action)?,
+            None => expand_rule(rule, "block")?, // Provide a fallback
         };
         for expanded_rule in expanded_rules {
             let punch_key = FiveTuple {
@@ -124,7 +124,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
             let punch_value = Punch {
                 action: expanded_rule.action,
-                padding: [0; 7],
+                padding: [0; 4],
                 //expires: 0, // No expiration
             };
 
@@ -137,7 +137,7 @@ async fn main() -> Result<(), anyhow::Error> {
                         expanded_rule.protocol,
                         0, // src_port is set to 0 in this case
                         expanded_rule.port,
-                        if expanded_rule.action == 0 { "allow" } else { "block" }
+                        if expanded_rule.action == PASS { "allow" } else { "block" }
                     );
                 }
                 Err(e) => {

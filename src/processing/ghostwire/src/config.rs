@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use ipnetwork::IpNetwork;
 use std::net::{IpAddr};
+use anyhow::bail;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -48,15 +49,19 @@ pub struct ExpandedRule {
     pub destination: String,
     pub protocol: u8, // 6 = TCP, 17 = UDP, 1 = ICMP
     pub port: u16,
-    pub action: u8, // 0 = allow, 1 = block
+    pub action: u32, // 0 = allow, 1 = block
 }
 
-pub fn expand_rules(rule: &Rule, default_action: &str) -> Vec<ExpandedRule> {
+/// Take a rule from YAML and expand it into multiple rules
+pub fn expand_rule(rule: &Rule, default_action: &str) -> anyhow::Result<Vec<ExpandedRule>> {
     // If rule action is not specified it is the opposite of the default
-    let action = match rule.action.as_deref().unwrap_or(default_action) {
-        "allow" => if default_action == "block" { 0 } else { 1 },
-        "block" => if default_action == "allow" { 1 } else { 0 },
-        _ => panic!("Invalid action: {}", rule.action.as_deref().unwrap_or(default_action)),
+    let action = match rule.action.as_deref() {
+        Some("allow") => 0, // Explicit "allow" maps to 0
+        Some("block") => 1, // Explicit "block" maps to 1
+        None => if default_action == "allow" { 1 } else if default_action == "block" { 0 } else {
+            bail!("Invalid default action: {}", default_action)
+        }, // Opposite of default_action
+        Some(invalid) => panic!("Invalid action: {}", invalid), // Catch invalid actions
     };
 
   let binding = Vec::<String>::new();
@@ -78,6 +83,7 @@ pub fn expand_rules(rule: &Rule, default_action: &str) -> Vec<ExpandedRule> {
   };
 
   let mut expanded_rules = Vec::new();
+  
   for protocol in protocols {
     // If source_cidrs is empty, we insert 0.0.0.0
     let source_ips = if !source_cidrs.is_empty() {
@@ -113,7 +119,7 @@ pub fn expand_rules(rule: &Rule, default_action: &str) -> Vec<ExpandedRule> {
         }
     }
   }
-  expanded_rules
+  Ok(expanded_rules)
 }
 
 fn expand_cidr(cidr: &str) -> Vec<IpAddr> {

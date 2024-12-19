@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 ghostwire-common = { path = "../ghostwire-common", features = ["user"] }
+clickhouse = "0.12.2"
 
 anyhow = { workspace = true, default-features = true }
 aya = { workspace = true }

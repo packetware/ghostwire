@@ -1,5 +1,8 @@
 #![no_std]
 
+pub static PASS: u32 = 0;
+pub static DROP: u32 = 1;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FiveTuple {
@@ -25,8 +28,8 @@ pub struct Flow {
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Punch {
-    pub action: u8,  // 1 for allow, 0 for block
-    pub padding: [u8; 7], // 7 bytes (to align to 8-byte boundary)
+    pub action: u32,  // 1 for allow, 0 for block
+    pub padding: [u8; 4], // 7 bytes (to align to 8-byte boundary)
 }
 
 #[derive(Debug, Clone, Copy)]
