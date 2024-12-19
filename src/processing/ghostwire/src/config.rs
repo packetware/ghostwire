@@ -52,11 +52,12 @@ pub struct ExpandedRule {
 }
 
 pub fn expand_rules(rule: &Rule, default_action: &str) -> Vec<ExpandedRule> {
-  let action = match rule.action.as_deref().unwrap_or(default_action) {
-      "allow" => 0,
-      "block" => 1,
-      _ => panic!("Invalid action: {}", rule.action.as_deref().unwrap_or(default_action)),
-  };
+    // If rule action is not specified it is the opposite of the default
+    let action = match rule.action.as_deref().unwrap_or(default_action) {
+        "allow" => if default_action == "block" { 0 } else { 1 },
+        "block" => if default_action == "allow" { 1 } else { 0 },
+        _ => panic!("Invalid action: {}", rule.action.as_deref().unwrap_or(default_action)),
+    };
 
   let binding = Vec::<String>::new();
   let source_cidrs = rule.sources.as_deref().unwrap_or(&binding);

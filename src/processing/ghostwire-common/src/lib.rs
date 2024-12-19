@@ -22,13 +22,19 @@ pub struct Flow {
     pub reason: u32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Punch {
     pub action: u8,  // 1 for allow, 0 for block
     pub padding: [u8; 7], // 7 bytes (to align to 8-byte boundary)
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct Connection {
     pub expires: u64,   // expiration timestamp
 }
+
 
 #[cfg(feature = "user")]
 unsafe impl aya::Pod for FiveTuple {}

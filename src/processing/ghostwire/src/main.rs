@@ -1,14 +1,15 @@
 use anyhow::Context;
 use aya::{
     maps::HashMap,
-    programs::{Xdp, XdpFlags},
+    programs::{Xdp, XdpFlags, tc, SchedClassifier, TcAttachType},
 };
 use aya_log::EbpfLogger;
-use clap::Parser;
+//use clap::Parser;
 use log::{info, warn, error};
 use std::net::Ipv4Addr;
 use std::fs::File;
 use tokio::signal;
+//use tokio::time::{interval, Duration};
 use serde_yaml::from_reader;
 
 use ghostwire_common::{FiveTuple, Punch};
@@ -59,7 +60,15 @@ async fn main() -> Result<(), anyhow::Error> {
     program.load()?;
     program.attach(&iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
-
+    
+    // error adding clsact to the interface if it is already added is harmless
+    // the full cleanup can be done with 'sudo tc qdisc del dev eth0 clsact'.
+    /*let _ = tc::qdisc_add_clsact(&iface);
+    let egress_program: &mut SchedClassifier =
+        bpf.program_mut("tc_egress").unwrap().try_into()?;
+    egress_program.load()?;
+    egress_program.attach(&iface, TcAttachType::Egress)?;*/
+    
     // 
     /*let mut blocklist: HashMap<_, u32, u32> =
         HashMap::try_from(bpf.map_mut("BLOCKLIST").unwrap())?;
@@ -88,7 +97,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let punch_value = Punch {
         action: 0,
         padding: [0; 7],    // Padding must be explicitly set
-        expires: 0, // Set an expiration time (0 for no expiration)
+        //expires: 0, // Set an expiration time (0 for no expiration)
     };
 
     // Insert the punch rule into the map
@@ -116,7 +125,7 @@ async fn main() -> Result<(), anyhow::Error> {
             let punch_value = Punch {
                 action: expanded_rule.action,
                 padding: [0; 7],
-                expires: 0, // No expiration
+                //expires: 0, // No expiration
             };
 
             match punches.insert(punch_key, punch_value, 0) {

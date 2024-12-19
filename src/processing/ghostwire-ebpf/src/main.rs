@@ -3,11 +3,11 @@
 #![allow(nonstandard_style, dead_code)]
 
 use aya_ebpf::{
-    bindings::xdp_action,
+    bindings::{xdp_action, TC_ACT_PIPE, TC_ACT_SHOT},
     helpers::gen::bpf_ktime_get_ns,
-    macros::{map, xdp},
-    maps::HashMap,
-    programs::XdpContext,
+    macros::{map, xdp, classifier},
+    maps::{HashMap, LruHashMap},
+    programs::{XdpContext, TcContext},
 };
 use aya_log_ebpf::info;
 
@@ -19,7 +19,7 @@ use network_types::{
     udp::UdpHdr,
 };
 
-use ghostwire_common::{FiveTuple, Flow, Punch};
+use ghostwire_common::{FiveTuple, Flow, Punch, Connection};
 
 #[cfg(not(test))]
 #[panic_handler]
@@ -40,6 +40,11 @@ static BLOCKLIST: HashMap<u32, u32> =
 static PUNCHES: HashMap<FiveTuple, Punch> =
     HashMap::<FiveTuple, Punch>::with_max_entries(1048576, 0);
 
+// Outgoing connections are allowed back in for 60 seconds after the last packet
+#[map]
+static CONNECTIONS: LruHashMap<FiveTuple, Connection> = 
+    LruHashMap::<FiveTuple, Connection>::with_max_entries(1048576, 0);
+
 #[xdp]
 pub fn xdp_firewall(ctx: XdpContext) -> u32 {
     match try_xdp_firewall(ctx) {
@@ -47,6 +52,14 @@ pub fn xdp_firewall(ctx: XdpContext) -> u32 {
         Err(_) => xdp_action::XDP_ABORTED,
     }
 }
+
+/*#[classifier]
+pub fn tc_egress(tc: TcContext) -> i32 {
+    match try_tc_egress(ctx) {
+        Ok(ret) => ret,
+        Err(_) => TC_ACT_SHOT,
+    }
+}*/
 
 #[inline(always)]
 unsafe fn ptr_at<T>(ctx: &XdpContext, offset: usize) -> Result<*const T, ()> {
@@ -208,7 +221,7 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
     }
 
     // Handle the case where src_ip == 0 or src_port == 0 (wildcard)
-    let key_with_wildcard_ip_and_port = FiveTuple {
+    let key_with_wildcard_src_ip_and_src_port = FiveTuple {
         src_ip: 0, // Wildcard for any source IP
         dst_ip: destination_ip,
         protocol: protocol as u8,
@@ -217,16 +230,16 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
         dst_port: destination_port,
     };
 
-    let key_with_wildcard_ip = FiveTuple {
+    /*let key_with_wildcard_src_ip = FiveTuple {
         src_ip: 0, // Wildcard for any source IP
         dst_ip: destination_ip,
         protocol: protocol as u8,
         padding: [0; 3],
         src_port: source_port,
         dst_port: destination_port,
-    };
+    };*/
 
-    let key_with_wildcard_port = FiveTuple {
+    let key_with_wildcard_src_port = FiveTuple {
         src_ip: source_ip,
         dst_ip: destination_ip,
         protocol: protocol as u8,
@@ -235,24 +248,28 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
         dst_port: destination_port,
     };
 
+    // Allow outbound connections back in
+    if let Some(connection) = unsafe { CONNECTIONS.get(&key) } {
+        if connection.expires != 0 && timestamp > connection.expires {
+            CONNECTIONS.remove(&key);
+            return prepare_action(&ctx, timestamp, key, xdp_action::XDP_DROP, "EXPIRED_CONNECTION");
+        }
+        return prepare_action(&ctx, timestamp, key, xdp_action::XDP_PASS, "CONNECTION_LIVE");
+    }
+
     let punch_rule = unsafe {
-        PUNCHES.get(&key_with_wildcard_ip_and_port)
-            .or_else(|| PUNCHES.get(&key))
-            .or_else(|| PUNCHES.get(&key_with_wildcard_port))
-            .or_else(|| PUNCHES.get(&key_with_wildcard_ip))
+        PUNCHES.get(&key_with_wildcard_src_ip_and_src_port)
+            .or_else(|| PUNCHES.get(&key_with_wildcard_src_port))
     };
 
     match punch_rule {
         Some(punch) => {
             // Check if the punch rule is expired
-            if punch.expires != 0 && timestamp > punch.expires {
-                // If expired, remove it from the map and drop the packet
-                unsafe {
-                    PUNCHES.remove(&key);
-                }
+            /*if punch.expires != 0 && timestamp > punch.expires {
+                PUNCHES.remove(&key);
 
                 return prepare_action(&ctx, timestamp, key, xdp_action::XDP_DROP, "EXPIRED_PUNCH");
-            }
+            }*/
 
             // If punch allows (punch.allow == 1), permit the traffic
             if punch.action == 0 {
@@ -268,3 +285,24 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
         }
     }
 }
+
+/*fn try_tc_egress(ctx: TcContext) -> Result<i32, ()> {
+    let ethhdr: EthHdr = ctx.load(0).map_err(|_| ())?;
+    match ethhdr.ether_type {
+        EtherType::Ipv4 => {}
+        _ => return Ok(TC_ACT_PIPE),
+    }
+
+    let ipv4hdr: Ipv4Hdr = ctx.load(EthHdr::LEN).map_err(|_| ())?;
+    let destination = u32::from_be(ipv4hdr.dst_addr);
+
+    let action = if blocked_ip(destination) {
+        TC_ACT_SHOT
+    } else {
+        TC_ACT_PIPE
+    };
+
+    info!(&ctx, "DEST {:i}, ACTION {}", destination, action);
+
+    Ok(action)
+}*/
