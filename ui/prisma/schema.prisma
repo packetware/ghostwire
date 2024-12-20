@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Location {
+  id String @id @unique
+
+  nodes     Node[]
+  addresses Address[]
+}
+
+model Node {
+  id          String   @id @unique
+  address_id  String   @unique
+  address     Address  @relation(fields: [address_id], references: [id])
+  location    Location @relation(fields: [location_id], references: [id])
+  location_id String
+}
+
+enum Version {
+  IPv4
+  IPv6
+}
+
+model Address {
+  id          String    @id @unique
+  version     Version
+  netmask     String    @default("255.255.255.255")
+  node        Node?
+  location    Location  @relation(fields: [location_id], references: [id])
+  location_id String
+  firewall    Firewall? @relation(fields: [firewall_id], references: [id])
+  firewall_id Int?
+  default     Action
+  action_id   Int?
+}
+
+enum Action {
+  ALLOW
+  DROP
+  LEAKY_BUCKET_PACKETS
+  LEAKY_BUCKEY_BANDWIDTH
+  REDIRECT
+}
+
+model Firewall {
+  id      Int       @id @default(autoincrement())
+  name    String
+  Address Address[]
+  Rule    Rule[]
+}
+
+enum Protocol {
+  TCP
+  UDP
+  ICMP
+}
+
+model Rule {
+  id Int @id @default(autoincrement())
+
+  firewall    Firewall @relation(fields: [firewall_id], references: [id])
+  firewall_id Int
+
+  priority       Int[]
+  src_ip         String?
+  protocol       Protocol?
+  dst_port       Int?
+  dst_port_range Int
+
+  action    Action
+  action_id Int?
+}
