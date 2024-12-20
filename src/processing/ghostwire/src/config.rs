@@ -8,6 +8,8 @@ pub struct Config {
     pub interface: String,
     pub source: Source,
     pub default: Option<String>, // Optional: "allow" or "block"
+    pub allow: Option<Vec<String>>, // List of IPs to allow
+    pub block: Option<Vec<String>>, // List of IPs to block
     pub rules: Vec<Rule>,
 }
 
@@ -128,7 +130,7 @@ pub fn expand_rule(rule: &Rule, default_action: &str) -> anyhow::Result<Vec<Expa
   Ok(expanded_rules)
 }
 
-fn expand_cidr(cidr: &str) -> Vec<IpAddr> {
+pub fn expand_cidr(cidr: &str) -> Vec<IpAddr> {
   let ip_network: IpNetwork = cidr.parse().expect("Invalid CIDR format");
   ip_network.iter().collect()
 }

@@ -6,7 +6,7 @@ use aya::{
 use aya_log::EbpfLogger;
 //use clap::Parser;
 use log::{info, warn, error};
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use std::fs::File;
 use tokio::signal;
 //use tokio::time::{interval, Duration};
@@ -14,7 +14,7 @@ use serde_yaml::from_reader;
 
 use ghostwire_common::{PASS, DROP, FiveTuple, Punch};
 
-use config::{Config, expand_rule};
+use config::{Config, expand_rule, expand_cidr};
 
 mod config;
 
@@ -70,14 +70,36 @@ async fn main() -> Result<(), anyhow::Error> {
     egress_program.attach(&iface, TcAttachType::Egress)?;
 
     // 
-    /*let mut blocklist: HashMap<_, u32, u32> =
+    let mut address_list: HashMap<_, u32, u32> =
         HashMap::try_from(bpf.map_mut("IPV4LIST").unwrap())?;
 
-    // 
-    let block_addr: u32 = Ipv4Addr::new(192, 168, 56, 1).into();
+    // Process allowed addresses
+    if let Some(allow_list) = &config.allow {
+        for allowed in allow_list {
+            let addresses = expand_cidr(allowed);
+            for address in addresses {
+                if let IpAddr::V4(ipv4) = address {
+                    address_list.insert(u32::from(ipv4), PASS, 0);
+                } else {
+                    eprintln!("Skipping unsupported IPv6 address: {}", address);
+                }
+            }
+        }
+    }
 
-    // 
-    blocklist.insert(block_addr, DROP, 0)?;*/
+    // Process blocked addresses
+    if let Some(block_list) = &config.block {
+        for blocked in block_list {
+            let addresses = expand_cidr(blocked);
+            for address in addresses {
+                if let IpAddr::V4(ipv4) = address {
+                    address_list.insert(u32::from(ipv4), DROP, 0);
+                } else {
+                    eprintln!("Skipping unsupported IPv6 address: {}", address);
+                }
+            }
+        }
+    }
 
     // Initialize the PUNCHES map
     let mut punches: HashMap<_, FiveTuple, Punch> =
